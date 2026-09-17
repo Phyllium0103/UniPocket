@@ -14,6 +14,10 @@ body {
   user-select: none; 
 }
 
+/* 👇 新增這段，讓所有輸入框恢復可選取狀態 👇 */
+input, textarea, select { 
+  user-select: auto; 
+}
 /* ================== Header & Utilities ================== */
 header { 
   display: flex; 
@@ -110,36 +114,40 @@ h1 {
 .week-nav-btns { display: flex; align-items: center; gap: 4px; }
 .week-display { font-weight: 700; font-size: 0.80rem; color: var(--text); }
 
-.control-bar { 
-  display: flex; 
-  gap: 5px; 
-  margin-top: 8px; 
-  margin-bottom: 8px; 
-  flex-wrap: wrap; 
-  align-items: center; 
-}
-
 /* ================== Buttons ================== */
+/* 提升主要按鈕質感 */
 .btn { 
-  padding: 5px 9px; 
+  padding: 6px 12px; 
   background: var(--primary); 
   color: #ffffff; 
   border: none; 
-  border-radius: 6px; 
+  border-radius: 8px; 
   cursor: pointer; 
-  font-size: 0.75rem; 
-  font-weight: 600; 
+  font-size: 0.8rem; 
+  font-weight: 700; 
   display: inline-flex; 
   align-items: center; 
   justify-content: center; 
-  transition: transform 0.1s; 
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.btn:active { 
+  transform: scale(0.95); 
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
 }
 
-.btn-secondary { background: #64748b; color: #ffffff; }
+/* 翻新次要按鈕：跟隨主題的微透明底色與邊框 */
+.btn-secondary { 
+  background: var(--card-bg); 
+  color: var(--text); 
+  border: 1px solid var(--border); 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+}
+.btn-secondary:hover { background: var(--slot-hover); }
+.btn-secondary:active { background: var(--border); }
+
 .btn-warning { background: #f59e0b; color: #ffffff; }
 .btn-danger { background: #ef4444; color: #ffffff; }
-.btn-edit-mode { border: 2px solid var(--primary); font-weight: 700; }
-.btn:active { transform: scale(0.97); }
 
 .checkbox-label { 
   display: flex; 
@@ -149,6 +157,96 @@ h1 {
   font-weight: 600; 
   cursor: pointer; 
   color: var(--text); 
+}
+
+/* ================== 全局輸入框美化 ================== */
+/* 讓所有輸入框自動適應深淺色主題 */
+input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="time"], input[type="month"], textarea {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  width: 100%;
+}
+input:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--today-header-bg); /* 聚焦時有符合主題的發光感 */
+}
+
+/* ================== 特殊 UI 元件設計 ================== */
+/* 1. 一體成型搜尋列 */
+.search-bar-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px 4px 4px 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-bar-wrapper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--today-header-bg);
+}
+.search-bar-wrapper input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 6px 8px;
+  box-shadow: none;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+.search-bar-wrapper input:focus {
+  box-shadow: none;
+}
+.search-bar-wrapper .search-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+/* 2. 膠囊型週次切換器 */
+.week-nav-group {
+  display: flex;
+  align-items: center;
+  background: var(--table-th-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.week-nav-group button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  padding: 8px 12px; /* 稍微縮小一點左右 padding，給文字更多空間 */
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  
+  /* 👇 加上這三行修正換行與對齊問題 👇 */
+  white-space: nowrap; /* 強制文字絕對不換行 */
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+}
+.week-nav-group button:last-child {
+  border-right: none;
+}
+.week-nav-group button:active {
+  background: var(--border);
+}
+.week-nav-group button.today {
+  color: var(--primary);
+  background: var(--card-bg);
 }
 
 /* ================== Deadlines ================== */
@@ -191,9 +289,12 @@ h1 {
 .deadline-item:last-child { border-bottom: none; }
 
 /* ================== Timetable ================== */
+/* ================== Timetable ================== */
 .timetable-container { 
   width: 100%; 
+  max-height: 68vh; /* 啟用內部滾動，確保 sticky 正常運作 */
   overflow-x: auto; 
+  overflow-y: auto; 
   background: var(--card-bg); 
   border-radius: 8px; 
   box-shadow: 0 1px 3px rgba(0,0,0,0.06); 
@@ -201,24 +302,45 @@ h1 {
   -webkit-overflow-scrolling: touch; 
 }
 
-table { table-layout: fixed; border-collapse: collapse; }
-th, td { border: 1px solid var(--border); padding: 0; text-align: center; vertical-align: top; }
+/* 調整 4：修正 border-collapse 造成的 sticky 邊框消失問題 */
+table { 
+  table-layout: fixed; 
+  border-collapse: separate; /* 改為 separate 解決破圖 */
+  border-spacing: 0;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+th, td { 
+  border-bottom: 1px solid var(--border); 
+  border-right: 1px solid var(--border); 
+  padding: 0; 
+  text-align: center; 
+  vertical-align: top; 
+}
 th { 
   background: var(--table-th-bg); 
   font-size: 0.72rem; 
   color: var(--text-muted); 
   height: 34px; 
   padding: 2px; 
+  position: sticky; /* 凍結頂部 */
+  top: 0;           
+  z-index: 50;      /* 確保不會被卡片蓋住 */
+  box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border); /* 補償 separate 的邊框顯示 */
 }
 
 th.today-header { 
   background: var(--today-header-bg); 
   color: var(--today-header-text); 
-  border-bottom: 2px solid var(--primary); 
+  border-bottom: none; 
   font-weight: 700; 
+  box-shadow: 0 2px 0 var(--primary), 0 -1px 0 var(--border); /* 粗底線效果改用 shadow 繪製 */
 }
 
-.col-time { 
+.col-time {
+  position: sticky;
+  left: 0;
+  z-index: 40;
   width: 68px; 
   background: var(--card-bg); 
   font-size: 0.62rem; 
@@ -226,6 +348,9 @@ th.today-header {
   vertical-align: middle; 
   padding: 4px 2px; 
   text-align: center; 
+}
+thead .col-time {
+  z-index: 60; /* 左上角交叉點需為最高層級 */
 }
 
 .table-col-wrapper { position: relative; width: 100%; height: 100%; }
@@ -393,6 +518,62 @@ th.today-header {
 
 .schedule-footer-banner:hover { background: var(--table-th-bg); }
 
+/* ================== Floating Action Button (FAB) ================== */
+.fab-container {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+  right: 16px; /* 恢復靠右 */
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* 恢復靠右 */
+}
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; /* 恢復靠右 */
+  gap: 10px;
+  margin-bottom: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(20px);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.fab-menu.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+.fab-item {
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.fab-item:active { transform: scale(0.95); }
+.fab-button {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #ffffff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 1.8rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  cursor: pointer;
+  border: none;
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s;
+}
+.fab-button.active { transform: rotate(45deg); }
+
 /* ================== Mobile Bottom Tab ================== */
 .mobile-tab-bar { 
   position: fixed; 
@@ -425,6 +606,64 @@ th.today-header {
 .mobile-tab-item.active { color: var(--primary); font-weight: 700; }
 .mobile-tab-icon { font-size: 1.15rem; margin-bottom: 1px; position: relative;}
 .badge { position: absolute; top: -2px; right: -8px; background: #ef4444; color: white; font-size: 0.55rem; padding: 2px 4px; border-radius: 10px; display: none; }
+
+/* ================== Settings Panel ================== */
+.settings-panel {
+  padding: 0 4px;
+  display: none;
+}
+.settings-group {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+.settings-group-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--primary);
+  padding: 10px 14px;
+  background: var(--table-th-bg);
+  border-bottom: 1px solid var(--border);
+}
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.settings-item:last-child { border-bottom: none; }
+.settings-item:active { background: var(--slot-hover); }
+.settings-item .toggle-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  transition: background 0.3s;
+}
+.settings-item .toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.settings-item .toggle-switch.active { background: var(--primary); }
+.settings-item .toggle-switch.active::after { transform: translateX(20px); }
 
 /* ================== Panels & Filters ================== */
 .billing-panel, .personal-finance-panel, .friends-panel { 
@@ -525,7 +764,7 @@ th.today-header {
 .student-stat-row { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px; }
 
 /* ================== Data Tables ================== */
-.billing-table, .finance-table { width: 100%; border-collapse: collapse; margin-top: 8px; min-width: 480px; }
+.billing-table, .finance-table { width: 100%; border-collapse: collapse; margin-top: 8px;}
 .billing-table th, .billing-table td, .finance-table th, .finance-table td { padding: 5px 6px; border: 1px solid var(--border); font-size: 0.75rem; }
 
 .tag-paid { background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
@@ -580,6 +819,31 @@ th.today-header {
 .form-row { display: flex; gap: 6px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
 
+/* Multi-select Grid for Courses */
+.period-select-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+.period-chk-btn {
+  padding: 6px 0;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+.period-chk-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
 .detail-card { background: var(--table-th-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
 .detail-label { font-size: 0.70rem; font-weight: 600; color: var(--text-muted); margin-top: 4px; }
 .detail-value { font-size: 0.80rem; color: var(--text); margin-bottom: 2px; word-break: break-all; }
@@ -598,7 +862,7 @@ th.today-header {
 .common-empty { background-color: rgba(34, 197, 94, 0.25) !important; border: 2px dashed #22c55e !important; box-shadow: inset 0 0 5px rgba(34, 197, 94, 0.5); }
 .viewing-friend-banner { background: #f59e0b; color: white; font-weight: bold; text-align: center; padding: 6px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
 
-/* ================== Error Toast Notification (新增) ================== */
+/* ================== Error Toast Notification ================== */
 .toast {
   position: fixed;
   bottom: 80px;
@@ -620,32 +884,30 @@ th.today-header {
   transform: translateX(-50%) translateY(20px);
 }
 .toast.error {
-  background: #ef4444; /* 紅色警告 */
+  background: #ef4444; 
 }
 .toast.success {
-  background: #10b981; /* 綠色成功 */
+  background: #10b981;
 }
-/* ================== Splash Screen 啟動畫面 (時針狂轉精準版) ================== */
+
+/* ================== Splash Screen 啟動畫面 ================== */
 #splash-screen {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: #0f172a; /* 與時鐘沉穩搭配的深色背景 */
+  background-color: #0f172a; 
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 99999;
   transition: opacity 0.5s ease, visibility 0.5s ease;
 }
-
 .splash-content {
   text-align: center;
   color: #ffffff;
 }
-
-/* 完美對齊的圖示與時鐘容器 (120px) */
 .splash-icon-container {
   position: relative;
   width: 120px;
@@ -655,8 +917,6 @@ th.today-header {
   justify-content: center;
   align-items: center;
 }
-
-/* 圓形時鐘外框：精準 120px，邊框改為與 icon 一致的 #0284c7 */
 .clock {
   position: absolute;
   top: 0;
@@ -669,8 +929,6 @@ th.today-header {
   z-index: 2;
   animation: fadeIn 0.3s forwards, clockFadeOnly 0.2s forwards 1.5s;
 }
-
-/* 內部時針：長度 45px，在 120px 框內狂轉 */
 .hand {
   position: absolute;
   top: 50%;
@@ -683,8 +941,6 @@ th.today-header {
   margin-left: -2px;
   animation: spinFast 1.5s cubic-bezier(0.5, 0, 0.5, 1) forwards;
 }
-
-/* 圓形百寶袋 Icon：等待時鐘轉完後彈出 */
 .splash-icon {
   width: 120px;
   height: 120px;
@@ -693,7 +949,6 @@ th.today-header {
   animation: popIn 0.8s forwards 1.5s;
   opacity: 0;
 }
-
 .splash-title {
   font-size: 2rem;
   font-weight: 900;
@@ -702,36 +957,335 @@ th.today-header {
   opacity: 0;
   animation: textSlideUp 0.8s forwards 1.7s;
 }
-
-/* 隱藏啟動畫面 */
 #splash-screen.hidden {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes spinFast { 0% { transform: rotate(0deg); } 100% { transform: rotate(1440deg); opacity: 0; } }
 
-/* --- 動畫 Keyframes --- */
-@keyframes fadeIn {
-  to { opacity: 1; }
+/* [修復] 動畫在舊版瀏覽器沒有指定 0% 時的閃爍問題 */
+@keyframes clockFadeOnly { 
+  0% { opacity: 1; transform: scale(1); } 
+  100% { opacity: 0; transform: scale(1); } 
 }
 
-@keyframes spinFast {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(1440deg); opacity: 0; }
+@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes textSlideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+
+/* ================== Modal Bottom Sheet & Course Details ================== */
+@media (max-width: 768px) {
+  .modal {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-content {
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    margin: 0;
+    width: 100%;
+    border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.5; }
+  to { transform: translateY(0); opacity: 1; }
 }
 
-/* 時鐘外框原地淡出，絕不向外放大 */
-@keyframes clockFadeOnly {
-  to { opacity: 0; transform: scale(1); }
+.attendance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px dashed var(--border);
+  font-size: 0.8rem;
+}
+.attendance-row:last-child {
+  border-bottom: none;
+}
+.attendance-actions button {
+  padding: 3px 6px;
+  font-size: 0.7rem;
+  margin-left: 2px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+}
+.attendance-actions button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.note-item {
+  background: var(--table-th-bg);
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  font-size: 0.8rem;
+}
+.note-item:last-child {
+  margin-bottom: 0;
 }
 
-@keyframes popIn {
-  0% { transform: scale(0.5); opacity: 0; }
-  70% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+/* ================== Credit Calculator ================== */
+.credit-progress-wrap { background: var(--table-th-bg); border-radius: 8px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); }
+.credit-progress-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; color: var(--text); }
+.credit-progress-bar-bg { width: 100%; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+.credit-progress-bar-fill { height: 100%; background: var(--primary); border-radius: 5px; transition: width 0.3s; }
+
+.credit-domain-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; }
+.credit-domain-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+.credit-domain-name { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 700; }
+.credit-domain-val { font-size: 0.85rem; font-weight: 700; color: var(--text); }
+
+.credit-chart-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; margin-bottom: 12px; }
+.credit-chart-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; color: var(--text); text-align: center; }
+
+.credit-semester-block { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.credit-semester-header { background: var(--today-header-bg); color: var(--today-header-text); padding: 8px 10px; font-weight: 700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+.credit-semester-body { padding: 8px; }
+.credit-course-item { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; background: var(--table-th-bg); padding: 6px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--border); }
+.credit-course-item input, .credit-course-item select { padding: 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
+.credit-course-item .c-name { flex: 2; min-width: 80px; }
+.credit-course-item .c-cat { flex: 1.5; min-width: 70px; }
+.credit-course-item .c-cred { flex: 0.8; min-width: 40px; }
+.credit-course-item .c-score { flex: 0.8; min-width: 40px; }
+.credit-course-item .c-grade { flex: 0.8; min-width: 40px; }
+.credit-course-action { width: 100%; display: flex; justify-content: flex-end; margin-top: 4px; }
+
+/* ================== Credit Calculator Panel ================== */
+.credits-panel { 
+  background: var(--card-bg); 
+  padding: 12px; 
+  border-radius: 8px; 
+  border: 1px solid var(--border); 
+  margin-bottom: 20px;
 }
 
-@keyframes textSlideUp {
-  0% { transform: translateY(20px); opacity: 0; }
-  100% { transform: translateY(0); opacity: 1; }
+.credit-semester-chips { 
+  display: flex; 
+  gap: 6px; 
+  overflow-x: auto; 
+  padding-bottom: 6px; 
+  margin-bottom: 12px; 
+  align-items: center; 
+  white-space: nowrap; 
+}
+.credit-sem-chip { 
+  padding: 6px 12px; 
+  border-radius: 16px; 
+  font-size: 0.75rem; 
+  font-weight: 600; 
+  background: var(--table-th-bg); 
+  color: var(--text-muted); 
+  border: 1px solid var(--border); 
+  cursor: pointer; 
+  transition: all 0.2s;
+}
+.credit-sem-chip.active { 
+  background: var(--primary); 
+  color: #ffffff; 
+  border-color: var(--primary); 
+}
+.credit-sem-add-btn {
+  padding: 6px 12px; 
+  border-radius: 16px; 
+  font-size: 0.75rem; 
+  font-weight: 700; 
+  background: transparent; 
+  color: var(--primary); 
+  border: 1px dashed var(--primary); 
+  cursor: pointer; 
+}
+
+/* ================== Credit Dashboard UI ================== */
+.credit-top-card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); }
+.circular-progress-wrap { position: relative; width: 90px; height: 90px; border-radius: 50%; display: flex; justify-content: center; align-items: center; background: conic-gradient(var(--primary) 0%, var(--table-th-bg) 0%); }
+.circular-progress-inner { width: 74px; height: 74px; border-radius: 50%; background: var(--card-bg); display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: 800; color: var(--text); }
+.circular-progress-inner span { font-size: 1.5rem; line-height: 1; }
+.circular-progress-inner small { font-size: 0.6rem; color: var(--text-muted); font-weight: normal; }
+
+.credit-stats-info { flex: 1; }
+.credit-stats-info h4 { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
+.gpa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gpa-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
+.gpa-value { font-size: 1.4rem; font-weight: 800; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
+.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
+
+.domain-list-card { background: var(--card-bg); border-radius: 16px; padding: 12px 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+.domain-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
+.domain-row:last-child { margin-bottom: 0; }
+.domain-name { width: 70px; font-weight: 700; color: var(--text); }
+.domain-bar-bg { flex: 1; height: 6px; background: var(--table-th-bg); border-radius: 3px; margin: 0 10px; overflow: hidden; }
+.domain-bar-fill { height: 100%; background: var(--text-muted); border-radius: 3px; }
+.domain-val { width: 45px; text-align: right; font-size: 0.75rem; color: var(--text-muted); }
+
+/* Segmented Control for Add Semester */
+.segmented-control { display: flex; background: var(--table-th-bg); border-radius: 12px; padding: 4px; gap: 4px; overflow-x: auto; }
+.seg-item { flex: 1; text-align: center; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.seg-item.active { background: var(--card-bg); color: var(--text); box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
+
+.grade-input-td input { width: 100%; padding: 4px; font-size: 0.8rem; text-align: center; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); border-radius: 4px; }
+
+/* ================== Credit Calculator Enhancements ================== */
+/* 隱藏數字輸入框上下箭頭 */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+
+/* 績點與標題字體正常化 */
+.gpa-value { font-size: 1.4rem; font-weight: normal !important; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
+.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: normal !important; }
+
+/* 左滑刪除元件 (底色紅、滑動露出) */
+.swipe-container { 
+  position: relative; 
+  overflow: hidden; 
+  background: #ef4444; /* 設定底色為紅色 */
+  border-bottom: 1px solid var(--border);
+}
+.swipe-container:last-child {
+  border-bottom: none;
+}
+.swipe-delete-btn { 
+  position: absolute; 
+  right: 0; 
+  top: 0; 
+  bottom: 0; 
+  width: 70px; 
+  background: #ef4444; 
+  color: white; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  font-size: 0.85rem; 
+  font-weight: bold; 
+  border: none; 
+  z-index: 1; 
+  cursor: pointer; 
+}
+.swipe-content { 
+  display: flex; 
+  align-items: stretch; 
+  background: var(--card-bg); /* 表格底層顏色 */
+  transition: transform 0.2s ease-out; 
+  position: relative; 
+  z-index: 2; 
+  touch-action: pan-y; /* 確保上下滾動不受影響 */
+}
+
+/* 表格化排版 (仿圖片設計) */
+.credit-table-container {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden; 
+  background: var(--card-bg);
+}
+.credit-table-header {
+  display: flex;
+  background: var(--table-th-bg);
+  border-bottom: 1px solid var(--border);
+}
+.credit-cell {
+  padding: 12px 4px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.credit-cell:last-child {
+  border-right: none;
+}
+.credit-table-header .credit-cell {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+/* 課程無框輸入樣式 */
+.clean-input { background: transparent; border: none; outline: none; color: var(--text); font-size: 0.9rem; font-weight: 600; width: 100%; text-align: center; }
+.clean-input.left { text-align: left; padding-left: 4px; }
+.score-btn { background: transparent; border: 1px solid var(--text-muted); border-radius: 6px; padding: 4px 6px; font-weight: bold; font-size: 0.9rem; text-align: center; color: var(--text); cursor: pointer; min-width: 40px; display: inline-flex; justify-content: center; align-items: center; }
+.cat-badge { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 4px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; outline: none; cursor: pointer; width: 100%; text-align: center; appearance: none; -webkit-appearance: none; }
+.grade-info { font-size: 0.9rem; font-weight: bold; color: var(--text); text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
+.grade-info small { font-size: 0.65rem; color: var(--text-muted); font-weight: normal; }
+
+/* 全新設定頁面樣式 */
+.setting-domain-card { background: var(--table-th-bg); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border); }
+.setting-domain-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.setting-domain-row:last-child { margin-bottom: 0; }
+.setting-checkbox { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--text-muted); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; }
+.setting-checkbox.checked { background: var(--primary); border-color: var(--primary); }
+.setting-checkbox.checked::after { content: "✓"; color: white; font-size: 12px; font-weight: bold; }
+.setting-input-clean { flex: 1; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; }
+.setting-target-input { width: 50px; text-align: right; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; border-bottom: 1px solid var(--border); }
+.setting-icon-btn { background: transparent; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; }
+
+/* 選擇學期彈窗 */
+.sem-switch-item { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.sem-switch-item:active { background: var(--slot-hover); }
+
+/* 績點字體正常化 */
+.gpa-value { font-size: 1.4rem; font-weight: normal !important; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
+.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: normal !important; }
+
+/* ================== 齒輪按鈕 & 底部操作選單 ================== */
+.gear-action-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  outline: none;
+  transition: transform 0.2s, color 0.2s;
+}
+.gear-action-btn:active {
+  transform: scale(0.85) rotate(45deg);
+  color: var(--primary);
+}
+
+.action-menu-btn {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  background: var(--table-th-bg);
+  color: var(--text);
+  transition: background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.action-menu-btn:active {
+  background: var(--border);
+  transform: scale(0.98);
+}
+.action-menu-btn.danger {
+  color: #ef4444;
+  background: #fee2e2;
+}
+.action-menu-btn.danger:active {
+  background: #fecaca;
+}
+
+/* 強制底部滑出樣式 */
+.bottom-sheet {
+  border-radius: 20px 20px 0 0 !important;
+  align-self: flex-end;
+  margin: 0 !important;
+  width: 100%;
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
+  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }

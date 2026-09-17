@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="UniPocket">
   <meta name="theme-color" content="#2563eb">
   <link rel="icon" type="image/png" sizes="192x192" href="UniPocket_png192.png">
-  <link rel="icon" type="image/png" sizes="512x512" href="https://uni-pocket.pages.dev/UniPocket_png512.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="./UniPocket_png512.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="UniPocket_png512.png">
   <link rel="manifest" href="manifest.json">
@@ -18,20 +18,17 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
-<!-- UniPocket 動態啟動畫面 (時針狂轉精準融合版) -->
+  <!-- UniPocket 動態啟動畫面 -->
   <div id="splash-screen">
     <div class="splash-content">
       <div class="splash-icon-container">
-        <!-- 旋轉的時鐘外框與指針 -->
-        <div class="clock">
-          <div class="hand"></div>
-        </div>
-        <!-- 圓形百寶袋 Icon -->
+        <div class="clock"><div class="hand"></div></div>
         <img src="icon.svg" alt="UniPocket Logo" class="splash-icon">
       </div>
       <h1 class="splash-title">UniPocket</h1>
     </div>
   </div>
+
   <!-- 全域錯誤與通知提示 -->
   <div id="global-toast" class="toast hidden"></div>
 
@@ -49,10 +46,11 @@
       <span id="sync-user-text">載入同步狀態中...</span>
       <span id="my-nickname-display" style="margin-left:6px; color:var(--primary); font-weight:bold; cursor:pointer;" onclick="openNicknameModal()"></span>
     </div>
-    <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.72rem;" id="btn-auth-action" onclick="openAuthModal()">登入 / 註冊</button>
+    <button class="btn btn-secondary" style="padding:4px 12px; border-radius:12px; font-size:0.75rem;" id="btn-auth-action" onclick="openAuthModal()">登入 / 註冊</button>
   </div>
 
-  <main id="schedule-view">
+  <!-- ================= 課表檢視 ================= -->
+<main id="schedule-view">
     <div id="friend-view-banner" class="viewing-friend-banner" style="display:none;">
       <span id="friend-view-title">正在查看好友課表</span>
       <div>
@@ -63,19 +61,11 @@
       </div>
     </div>
 
-    <div class="week-nav-bar">
-      <div class="week-nav-btns">
-        <button class="btn btn-secondary" style="padding:3px 7px;" onclick="changeWeek(-1)">◀</button>
-        <button class="btn btn-secondary" style="padding:3px 7px;" onclick="resetCurrentWeek()">本週</button>
-        <button class="btn btn-secondary" style="padding:3px 7px;" onclick="changeWeek(1)">▶</button>
-      </div>
+    <!-- 調整 1：原本的 week-nav-btns 已移除，只保留週數文字並置中 -->
+    <div class="week-nav-bar" style="justify-content: center; position: relative;">
       <div class="week-display" id="week-range-text">載入中...</div>
-      <div style="display:flex; align-items:center; gap:8px;">
-        <label class="checkbox-label"><input type="checkbox" id="chk-show-deadlines" onchange="toggleDeadlineBanner()"> 顯示死線</label>
-        <label class="checkbox-label"><input type="checkbox" id="chk-show-tutor" onchange="toggleTutorView()"> 週末/課後</label>
-      </div>
+      <button class="btn btn-secondary" style="position: absolute; right: 10px; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; z-index: 10;" onclick="openCreditCalculator()">學分計算機</button>
     </div>
-
     <div id="deadline-banner" class="deadline-banner" style="display:none;">
       <div class="deadline-header" onclick="toggleDeadlineList()" style="align-items:flex-start;">
         <div style="display:flex; gap:6px;">
@@ -94,45 +84,31 @@
       </table>
     </div>
 
-    <div class="schedule-footer-banner" id="schedule-footer-banner" onclick="openScheduleSelectModal()" title="點擊切換或新增課表">載入中...</div>
+    <div class="week-nav-btns" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 12px;">
+      <div class="week-nav-btns" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 12px;">
+      <div class="week-nav-group">
+        <button onclick="changeWeek(-1)">◀ 上週</button>
+        <button class="today" id="btn-current-week" onclick="resetCurrentWeek()">本週</button>
+        <button onclick="changeWeek(1)">下週 ▶</button>
+      </div>
+    </div>
 
-    <div class="control-bar" id="main-control-bar" style="gap: 8px;">
-      <!-- 第一組：模式切換 -->
-      <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-        <button class="btn btn-secondary" id="btn-edit-mode-toggle" onclick="toggleEditMode()">唯讀模式</button>
-        <button class="btn btn-secondary" id="btn-24h-mode-toggle" onclick="toggle24HourMode()">24小時模式</button>
+    <!-- 調整 3：徹底移除了原本的 <div class="schedule-footer-banner"> -->
+
+    <!-- 懸浮按鈕 FAB -->
+    <div class="fab-container" id="main-fab-container">
+      <div class="fab-menu" id="fab-menu">
+        <div class="fab-item" onclick="toggleFab(); openOverrideModal()">臨時調課</div>
+        <div class="fab-item" onclick="toggleFab(); openTempEventModal()">臨時事件</div>
+        <div class="fab-item" onclick="toggleFab(); openTutoringModal()">家教</div>
+        <div class="fab-item" onclick="toggleFab(); openWorkModal()">工作</div>
+        <div class="fab-item" onclick="toggleFab(); openMultiSchoolModal()">課程</div>
       </div>
-      
-      <!-- 第二組：課表與節次 -->
-      <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-        <button class="btn btn-secondary" onclick="openScheduleConfigModal()">當前課表設定</button>
-        <button class="btn btn-secondary" onclick="openPeriodConfigModal()">節次設定</button>
-        <button class="btn btn-secondary" onclick="toggleLatePeriods()"><span id="late-period-text">顯示 9-10 節</span></button>
-      </div>
-      
-      <!-- 第三組：新增功能 -->
-      <div style="display: flex; gap: 5px; flex-wrap: wrap;">
-        <button class="btn btn-warning" onclick="openOverrideModal()">臨時調課</button>
-        <button class="btn btn-warning" onclick="openTempEventModal()">+ 臨時事件</button>
-        <button class="btn" onclick="openTutoringModal()">+ 家教</button>
-        <button class="btn" style="background:#0d9488;" onclick="openWorkModal()">+ 工作</button>
-      </div>
-      
-      <!-- 第四組：對齊與清除自訂顏色 (強制佔滿整行並加上分隔線) -->
-      <div style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--border);">
-        <div style="display:inline-flex; align-items:center; gap:4px;">
-          <span style="font-size:0.75rem; font-weight:600;">對齊：</span>
-          <select id="text-align-select" class="theme-select" onchange="onTextAlignChange(this.value)">
-            <option value="center">置中對齊</option>
-            <option value="left">靠左對齊</option>
-            <option value="right">靠右對齊</option>
-          </select>
-        </div>
-        <button class="btn btn-danger" style="font-size:0.70rem;" onclick="clearAllCustomColors()">清除自訂顏色</button>
-      </div>
+      <button class="fab-button" id="fab-button" onclick="toggleFab()">+</button>
     </div>
   </main>
 
+  <!-- ================= 帳務檢視 ================= -->
   <section id="billing-view" class="billing-panel">
     <div class="billing-type-bar">
       <button id="btn-billing-type-tutoring" class="billing-type-btn active" onclick="switchBillingType('tutoring')">家教帳務</button>
@@ -141,8 +117,8 @@
     <div class="month-filter-bar">
       <span style="font-weight:700; font-size:0.80rem;">月份：</span>
       <input type="month" id="bill-month-filter" onchange="renderBillings()">
-      <button class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthCurrent()">本月</button>
-      <button class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthAll()">全期間</button>
+      <button id="btn-bill-month-current" class="btn" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthCurrent()">本月</button>
+      <button id="btn-bill-month-all" class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthAll()">全期間</button>
       <span style="font-weight:700; font-size:0.80rem; margin-left:4px;">排序：</span>
       <select id="bill-sort-order" onchange="renderBillings()">
         <option value="desc">由近到遠 (新→舊)</option>
@@ -159,7 +135,6 @@
       <h3 style="font-size:0.82rem; margin-bottom:4px;" id="student-section-title">帳務統計</h3>
       <div class="student-stats-grid" id="student-stats-container"></div>
     </div>
-    <div class="control-bar" style="margin-top:6px;"><button class="btn" onclick="openCurrentBillingModal()">+ 新增記錄</button></div>
     <div style="overflow-x:auto;">
       <table class="billing-table">
         <thead>
@@ -170,36 +145,34 @@
         <tbody id="billing-body"></tbody>
       </table>
     </div>
+    <button class="fab-button" style="position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 70px); right:16px; z-index:80; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding-bottom: 4px;" onclick="openCurrentBillingModal()">+</button>
   </section>
 
+  <!-- ================= 個人記帳 ================= -->
   <section id="finance-view" class="personal-finance-panel">
     <div class="month-filter-bar">
       <span style="font-weight:700; font-size:0.80rem;">月份：</span>
       <input type="month" id="fin-month-filter" onchange="renderFinances()">
-      <button class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthCurrent()">本月</button>
-      <button class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthAll()">全期間</button>
+      <button id="btn-fin-month-current" class="btn" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthCurrent()">本月</button>
+      <button id="btn-fin-month-all" class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthAll()">全期間</button>
       <span style="font-weight:700; font-size:0.80rem; margin-left:4px;">排序：</span>
       <select id="fin-sort-order" onchange="renderFinances()">
         <option value="desc">由近到遠 (新→舊)</option>
         <option value="asc">由遠到近 (舊→新)</option>
       </select>
-      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.72rem; margin-left:auto;" id="btn-toggle-hidden" onclick="toggleShowHiddenItems()">👁️ 顯示隱藏</button>
-      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.72rem;" onclick="openCategoryManageModal()">⚙️ 類別管理</button>
-      <button class="btn btn-secondary" style="padding:2px 6px; font-size:0.72rem;" onclick="openRecurringModal()">🗓️ 固定收支設定</button>
     </div>
     <div class="stats-cards">
-      <div class="stat-box" onclick="toggleExpenseChart()"><div class="stat-title">總支出 📊</div><div class="stat-val" style="color:#ef4444;" id="fin-stat-expense">$0</div></div>
-      <div class="stat-box" onclick="setFinanceAllMode('all_income')"><div class="stat-title">總收入</div><div class="stat-val" style="color:#10b981;" id="fin-stat-income">$0</div></div>
+      <div class="stat-box" onclick="toggleFinanceChart('expense')"><div class="stat-title">總支出 📊</div><div class="stat-val" style="color:#ef4444;" id="fin-stat-expense">$0</div></div>
+      <div class="stat-box" onclick="toggleFinanceChart('income')"><div class="stat-title">總收入 📊</div><div class="stat-val" style="color:#10b981;" id="fin-stat-income">$0</div></div>
       <div class="stat-box" onclick="setFinanceAllMode('all')"><div class="stat-title">淨結餘</div><div class="stat-val" id="fin-stat-balance">$0</div></div>
       <div class="stat-box" onclick="setFinanceAllMode('all_receivable')"><div class="stat-title">總應收</div><div class="stat-val" style="color:#ca8a04;" id="fin-stat-receivable">$0</div></div>
       <div class="stat-box" onclick="setFinanceAllMode('all_payable')"><div class="stat-title">總應付</div><div class="stat-val" style="color:#c2410c;" id="fin-stat-payable">$0</div></div>
     </div>
-    <div id="expense-chart-container" class="expense-chart-container">
-      <h4 style="font-size:0.85rem; margin-bottom:10px; text-align:center;">當月支出佔比</h4>
-      <div id="expense-chart-content" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:20px;"></div>
+    <div id="finance-chart-container" class="expense-chart-container">
+      <h4 id="finance-chart-title" style="font-size:0.85rem; margin-bottom:10px; text-align:center;">當月支出佔比</h4>
+      <div id="finance-chart-content" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:20px;"></div>
     </div>
     <div class="finance-filter-chips" id="finance-filter-chips"></div>
-    <div class="control-bar" style="margin-top:6px;"><button class="btn" onclick="openFinanceModal()">+ 記一筆</button></div>
     <div style="overflow-x:auto;">
       <table class="finance-table">
         <thead>
@@ -210,26 +183,19 @@
         <tbody id="finance-body"></tbody>
       </table>
     </div>
+    <button class="fab-button" style="position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 70px); right:16px; z-index:80; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding-bottom: 4px;" onclick="openFinanceModal()">+</button>
   </section>
-
-  <!-- 好友連線分頁 -->
+  <!-- ================= 好友連線 ================= -->
   <section id="friends-view" class="friends-panel">
-    <!-- 標題與右側按鈕區塊 -->
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
       <h3 style="margin:0;">🤝 好友與連線系統</h3>
-      <div style="display:flex; gap:6px;">
-        <button class="btn btn-secondary" onclick="openNicknameModal()">更改暱稱</button>
-        <button class="btn btn-warning" id="btn-privacy-mask" onclick="openPrivacyMaskModal()">設定隱私遮罩</button>
-      </div>
     </div>
-    
-    <!-- 搜尋框區塊 (設定 min-width: 0 防止輸入框把按鈕擠壓變形) -->
-    <div class="form-row" style="margin-bottom:12px; display:flex; flex-wrap:nowrap; gap:6px;">
-      <input type="text" id="friend-search-input" placeholder="輸入 Email 或暱稱搜尋好友..." style="flex:1; min-width:0;">
-      <button class="btn" style="flex-shrink:0;" onclick="searchFriends()">搜尋</button>
+    <div class="search-bar-wrapper" style="margin-bottom:16px;">
+      <span style="margin-left: 8px; font-size: 1.1rem; opacity: 0.5;">🔍</span>
+      <input type="text" id="friend-search-input" placeholder="輸入 Email 或暱稱搜尋好友...">
+      <button class="btn search-btn" onclick="searchFriends()">搜尋</button>
     </div>
     <div id="friend-search-result" style="margin-bottom:12px; font-size:0.8rem; font-weight:bold; color:var(--primary);"></div>
-    
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
       <div style="flex:1; min-width:280px;">
         <h4 style="font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">好友列表</h4>
@@ -245,12 +211,95 @@
     </div>
   </section>
 
+  <!-- ================= 設定介面 (新功能) ================= -->
+  <section id="settings-view" class="settings-panel">
+    <div class="settings-group">
+      <div class="settings-group-title">👤 個人資料</div>
+      <div class="settings-item" onclick="openNicknameModal()">
+        <span>更改暱稱</span>
+        <span id="settings-nickname-display" style="color:var(--text-muted);">設定</span>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">📅 課表管理</div>
+      <div class="settings-item" onclick="openScheduleSelectModal()">
+        <span>切換與管理課表</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+      <div class="settings-item" onclick="openScheduleConfigModal()">
+        <span>當前課表設定 (名稱/日期)</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+      <div class="settings-item" onclick="openPeriodConfigModal()">
+        <span>節次時間設定</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+      <div class="settings-item" onclick="toggleSyncCourseName()">
+        <span>同名課程自動連動</span>
+        <div class="toggle-switch" id="toggle-sync-course"></div>
+      </div>
+      <div class="settings-item" onclick="openPrivacyMaskModal()">
+        <span>設定隱私遮罩</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+      <div class="settings-item" onclick="clearAllCustomColors()">
+        <span style="color:var(--primary);">清除所有自訂顏色</span>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">⚙️ 課表顯示設定</div>
+      <div class="settings-item" onclick="toggle24HourMode()">
+        <span>24小時模式</span>
+        <div class="toggle-switch" id="toggle-24h"></div>
+      </div>
+      <div class="settings-item" onclick="toggleLatePeriods()">
+        <span>顯示 9-10 節</span>
+        <div class="toggle-switch" id="toggle-late-periods"></div>
+      </div>
+      <div class="settings-item" onclick="toggleDeadlineBanner()">
+        <span>顯示死線 (重要日程)</span>
+        <div class="toggle-switch" id="toggle-deadlines"></div>
+      </div>
+      <div class="settings-item" onclick="toggleTutorView()">
+        <span>開啟週末 / 課後時段</span>
+        <div class="toggle-switch" id="toggle-tutor"></div>
+      </div>
+      <div class="settings-item">
+        <span>對齊方式</span>
+        <select id="settings-text-align" class="theme-select" style="padding:2px 6px; font-size:0.8rem;" onchange="onTextAlignChange(this.value)">
+          <option value="center">置中</option>
+          <option value="left">靠左</option>
+          <option value="right">靠右</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">💰 帳目顯示設定</div>
+      <div class="settings-item" onclick="toggleShowHiddenItems()">
+        <span>顯示隱藏項目</span>
+        <div class="toggle-switch" id="toggle-hidden-items"></div>
+      </div>
+      <div class="settings-item" onclick="openCategoryManageModal()">
+        <span>收支類別管理</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+      <div class="settings-item" onclick="openRecurringModal()">
+        <span>固定經常性收支設定</span>
+        <span style="color:var(--text-muted);">▶</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 底部導覽列 ================= -->
   <nav class="mobile-tab-bar">
     <div class="mobile-tab-item active" id="tab-btn-schedule" onclick="switchView('schedule')">
-      <div class="mobile-tab-icon">📖</div><div>課表檢視</div>
+      <div class="mobile-tab-icon">📖</div><div>課表</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-billing" onclick="switchView('billing')">
-      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div><div id="nav-billing-text">家教帳務</div>
+      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div><div id="nav-billing-text">打工帳務</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-finance" onclick="switchView('finance')">
       <div class="mobile-tab-icon">💳</div><div>個人記帳</div>
@@ -258,9 +307,12 @@
     <div class="mobile-tab-item" id="tab-btn-friends" onclick="switchView('friends')">
       <div class="mobile-tab-icon">🤝<span class="badge" id="tab-friends-badge">0</span></div><div>好友連線</div>
     </div>
+    <div class="mobile-tab-item" id="tab-btn-settings" onclick="switchView('settings')">
+      <div class="mobile-tab-icon">⚙️</div><div>設定</div>
+    </div>
   </nav>
 
-  <!-- Modals -->
+  <!-- ================= 所有 Modals ================= -->
   <!-- 認證與暱稱設定 -->
   <div class="modal" id="nickname-modal">
     <div class="modal-content">
@@ -354,10 +406,41 @@
     </div>
   </div>
   
-  <!-- 課程、家教、工作、事件等彈窗設定 -->
+  <!-- ================= 學校課程 ================= -->
   <div class="modal" id="school-modal">
     <div class="modal-content">
       <div class="modal-header">學校課程設定</div>
+      
+      <!-- 多重節次選擇區塊 (透過 FAB 觸發時顯示) -->
+<div id="sch-multi-select-wrap" style="display:none; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+        <div class="form-group">
+          <label>加入方式 *</label>
+          <select id="sch-multi-mode" onchange="onSchMultiModeChange(this.value)">
+            <option value="period">依照節次</option>
+            <option value="time">自訂時間 (24小時制推薦)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>上課星期 *</label>
+          <select id="sch-multi-day">
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
+          </select>
+        </div>
+        <div class="form-group" id="sch-multi-period-wrap">
+          <label>選擇節次 (可複選) *</label>
+          <div class="period-select-grid" id="sch-multi-periods">
+            <!-- JS dynamically populates this based on your periods setting -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- 新增 / 編輯自訂時間 UI (移出至獨立區塊) -->
+      <div class="form-row" id="sch-multi-time-wrap" style="display:none; margin-bottom: 8px;">
+        <div class="form-group" style="flex:1;"><label>開始時間 *</label><input type="time" id="sch-multi-start-time" value="08:00"></div>
+        <div class="form-group" style="flex:1;"><label>結束時間 *</label><input type="time" id="sch-multi-end-time" value="10:00"></div>
+      </div>
+
       <div class="form-group">
         <label>快速選擇歷史課程</label>
         <select id="sch-preset-select" onchange="onSelectPresetCourse(this.value)"><option value="">-- 選擇已存在的課程自動帶入 --</option></select>
@@ -387,19 +470,8 @@
           <button type="button" class="btn btn-secondary" style="font-size:0.72rem; padding:4px 8px;" onclick="resetSchoolColor()">恢復主題最適色</button>
         </div>
       </div>
-      <div class="form-group"><label>總備忘錄</label><textarea id="sch-memo" rows="2"></textarea></div>
-      <div class="form-group"><label>每周備忘錄</label><textarea id="sch-weekly-memo" rows="2"></textarea></div>
-      <div class="form-group" style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 8px;">
-        <label>重要日程 / 考試死線</label>
-        <div id="sch-deadlines-container" style="margin-bottom:6px;"></div>
-        <div class="form-row" style="margin-top: 4px;">
-          <input type="text" id="sch-new-dl-title" placeholder="如: 期中考" style="flex:2;">
-          <input type="date" id="sch-new-dl-date" style="flex:2;">
-          <button id="btn-add-dl" class="btn btn-secondary" onclick="addSchoolDeadline()" style="flex:1;">新增</button>
-        </div>
-      </div>
       <div class="modal-actions">
-        <button class="btn btn-danger" onclick="deleteSchoolCourse()" style="margin-right:auto;">清空該節</button>
+        <button class="btn btn-danger" id="sch-delete-btn" onclick="deleteSchoolCourse()" style="margin-right:auto;">清空該節</button>
         <button class="btn btn-secondary" onclick="closeModal('school-modal')">取消</button>
         <button class="btn" onclick="saveSchoolCourse()">儲存</button>
       </div>
@@ -523,11 +595,13 @@
 
   <div class="modal" id="view-detail-modal">
     <div class="modal-content">
-      <div class="modal-header" id="view-detail-title">詳細資料</div>
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <span id="view-detail-title">詳細資料</span>
+        <button class="gear-action-btn" id="btn-switch-to-edit" style="font-size:1.25rem;" title="進入編輯">⚙️</button>
+      </div>
       <div id="view-detail-body"></div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="btn-revert-override" style="display:none; margin-right:auto;" onclick="revertCurrentOverride()">取消調課 (復原)</button>
-        <button class="btn btn-warning" id="btn-switch-to-edit" style="margin-right:auto;">進入編輯</button>
         <button class="btn btn-secondary" onclick="closeModal('view-detail-modal')">關閉</button>
       </div>
     </div>
@@ -741,7 +815,7 @@
     <div class="modal-content">
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
         <span>⚙️ 收支類別設定</span>
-        <button class="btn btn-warning" style="padding:2px 6px; font-size:0.68rem;" onclick="resetCategoriesToDefault()">恢復預設類別</button>
+        <button class="btn" style="padding:2px 6px; font-size:0.68rem;" onclick="resetCategoriesToDefault()">恢復預設類別</button>
       </div>
       <div class="form-group">
         <label>管理類型</label>
@@ -752,7 +826,7 @@
       </div>
       <div style="display:flex; gap:6px; margin-bottom:10px;">
         <button class="btn" style="flex:1; font-size:0.72rem;" onclick="openAddMainCategoryModal()">+ 主類別</button>
-        <button class="btn btn-warning" style="flex:1; font-size:0.72rem;" onclick="openAddSubCategoryModal()">+ 子類別</button>
+        <button class="btn" style="flex:1; font-size:0.72rem;" onclick="openAddSubCategoryModal()">+ 子類別</button>
       </div>
       <div id="cat-manage-list" style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 4px;"></div>
       <div class="modal-actions" style="margin-top: 12px;">
@@ -802,7 +876,7 @@
     </div>
   </div>
 
-  <div class="modal" id="cat-merge-modal">
+<div class="modal" id="cat-merge-modal">
     <div class="modal-content">
       <div class="modal-header">合併</div>
       <div class="form-group"><label>合併到：</label><select id="cat-merge-select"></select></div>
@@ -810,6 +884,202 @@
         <button class="btn btn-secondary" onclick="closeModal('cat-merge-modal')">取消</button>
         <button class="btn" onclick="confirmCatMerge()">確認</button>
       </div>
+    </div>
+  </div>
+
+<!-- ================= 學分計算機 ================= -->
+  <div class="modal" id="credit-calculator-modal" style="padding: 0;">
+    <div class="modal-content" style="width: 100%; height: 100%; max-width: none; max-height: none; border-radius: 0; display: flex; flex-direction: column; margin: 0; border: none; padding-top: env(safe-area-inset-top, 12px); padding-bottom: env(safe-area-inset-bottom, 12px); background: var(--bg);" onclick="resetAllSwipes()">
+      
+      <!-- 頂部導覽列 -->
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:none; padding-bottom:0;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div onclick="openSemesterSwitchModal()" style="display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <span id="credit-sem-title" style="font-size:1.4rem; font-weight:normal; color:var(--text);">大一上</span>
+            <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">▼</span>
+          </div>
+          <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text); margin-left:8px;" onclick="openAddSemesterModal()">+</button>
+          <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text);" onclick="openGradeScaleModal()">❓</button>
+          <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text);" onclick="openCreditSettings()">⚙️</button>
+        </div>
+        <!-- 放大的 X 按鈕 -->
+        <button style="background:transparent; border:none; color:var(--text); font-size:2.5rem; font-weight:300; cursor:pointer; padding:0 8px; line-height: 0.8;" onclick="closeModal('credit-calculator-modal')">×</button>
+      </div>
+
+      <!-- 主要內容區 -->
+      <div id="credit-calculator-body" style="overflow-y: auto; flex: 1; padding: 10px; overflow-x: hidden;">
+        <!-- 內容由 JS 動態生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 學期切換 Modal -->
+  <div class="modal" id="semester-switch-modal">
+    <div class="modal-content" style="padding: 0; overflow: hidden; border-radius: 16px;">
+      <div class="modal-header" style="padding: 12px; text-align: center; border-bottom: 1px solid var(--border); margin: 0;">選擇學期</div>
+      <div id="semester-switch-list" style="max-height: 50vh; overflow-y: auto;"></div>
+      <div style="padding: 8px;"><button class="btn btn-secondary" style="width: 100%; padding: 10px;" onclick="closeModal('semester-switch-modal')">取消</button></div>
+    </div>
+  </div>
+
+  <!-- 選擇匯入課表 Modal -->
+  <div class="modal" id="import-schedule-modal">
+    <div class="modal-content">
+      <div class="modal-header">選擇要匯入的課表</div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">請選擇您要將哪一個課表的課程，匯入至目前的學期中：</div>
+      <div id="import-schedule-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+      <div class="modal-actions" style="margin-top: 15px;">
+        <button class="btn btn-secondary" onclick="closeModal('import-schedule-modal')">取消</button>
+      </div>
+    </div>
+  </div>
+
+<!-- 點擊輸入成績 Modal (底部彈窗) -->
+  <div class="modal" id="score-input-modal">
+    <div class="modal-content" style="border-radius: 20px 20px 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px); align-self: flex-end; margin: 0; width: 100%;">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border: none; margin-bottom: 0;">
+        <div style="width:24px;"></div> <!-- 排版用佔位 -->
+        <span style="font-size:1.1rem; font-weight:bold;">成績計算</span>
+        <button style="background:var(--table-th-bg); border:none; width:24px; height:24px; border-radius:50%; color:var(--text-muted); font-weight:bold; cursor:pointer;" onclick="openScoreInfoModal()">?</button>
+      </div>
+      <div id="score-modal-subtitle" style="text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 20px;"></div>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <label style="font-size: 0.75rem; color: var(--text-muted);">最終成績</label>
+        <input type="text" id="score-modal-input" style="display: block; margin: 5px auto; font-size: 2.5rem; font-weight: 800; text-align: center; width: 120px; border: none; border-bottom: 2px solid var(--primary); background: transparent; color: var(--text); outline: none;">
+      </div>
+
+      <div style="text-align:center; margin-bottom: 15px;">
+        <label class="checkbox-label" style="display:inline-flex; justify-content:center;">
+          <input type="checkbox" id="score-no-gpa-check" onchange="toggleSpecialScoreBtns()"> 無成績 (不計績點)
+        </label>
+      </div>
+
+      <div id="special-score-btns" style="display: none; justify-content: center; gap: 10px; margin-bottom: 20px;">
+        <button class="btn btn-secondary" style="border-radius: 8px;" onclick="setSpecialScore('抵免')">抵免</button>
+        <button class="btn btn-secondary" style="border-radius: 8px;" onclick="setSpecialScore('通過')">通過</button>
+        <button class="btn btn-secondary" style="border-radius: 8px;" onclick="setSpecialScore('免修')">免修</button>
+      </div>
+
+      <button class="btn" style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 12px;" onclick="saveScoreModal()">儲存成績</button>
+    </div>
+  </div>
+
+  <!-- 成績說明 Modal -->
+  <div class="modal" id="score-info-modal">
+    <div class="modal-content" style="border-radius: 20px 20px 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px); align-self: flex-end; margin: 0; width: 100%;">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">無成績科目說明</div>
+      <div style="font-size:0.9rem; line-height:1.6; color:var(--text); padding: 0 10px;">
+        <p><strong>抵免</strong><br><span style="font-size:0.8rem; color:var(--text-muted);">他校或他科認列的學分。<span style="color:#ef4444;">不計入分數、GPA，僅取得學分</span>。</span></p>
+        <p style="margin-top:10px;"><strong>通過</strong><br><span style="font-size:0.8rem; color:var(--text-muted);">以通過/不通過評分的科目(如體育)。<span style="color:#ef4444;">通過則取得學分，不計入分數、GPA</span>。</span></p>
+        <p style="margin-top:10px;"><strong>免修</strong><br><span style="font-size:0.8rem; color:var(--text-muted);">免修科目。不計學分(須以其他科目補足)，<span style="color:#ef4444;">亦不計入分數、GPA</span>。</span></p>
+      </div>
+      <button class="btn btn-secondary" style="width: 100%; padding: 12px; font-size: 1rem; border-radius: 12px; margin-top:20px;" onclick="closeModal('score-info-modal')">我知道了</button>
+    </div>
+  </div>
+
+  <!-- 設定畢業門檻與各領域 Modal -->
+  <div class="modal" id="credit-settings-modal">
+    <div class="modal-content" style="background: var(--bg);">
+      <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:none;">
+        <span style="font-size:1.2rem; font-weight:800;">成績管理</span>
+        <button class="btn btn-secondary" style="padding:2px 8px; font-size:0.75rem;" onclick="closeModal('credit-settings-modal'); openCreditCalculator();">完成</button>
+      </div>
+      
+      <div class="setting-domain-card" style="margin-bottom: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">畢業學分目標</span>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span id="settings-current-total" style="color:var(--primary); font-weight:800;">0</span>
+            <span style="color:var(--text-muted);">/</span>
+            <input type="number" id="credit-setting-total" class="setting-target-input">
+            <span>✏️</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div>
+          <h4 style="font-size:0.85rem; margin:0;">各領域目標</h4>
+          <div style="font-size:0.65rem; color:var(--text-muted);">勾選的領域將計入主修績點</div>
+        </div>
+        <button class="btn" style="background:transparent; color:var(--primary); font-size:0.8rem; border:none;" onclick="addCreditDomain()">+ 新增領域</button>
+      </div>
+      <div id="credit-settings-domains-list"></div>
+    </div>
+  </div>
+
+  <!-- 新增學期 Modal -->
+  <div class="modal" id="add-semester-modal">
+    <div class="modal-content">
+      <div class="modal-header">新增學期<div style="font-size:0.75rem; color:var(--text-muted); font-weight:normal; margin-top: 4px;">記錄暑修、寒修或大五以上的學期</div></div>
+      <div class="form-group">
+        <label>學年</label>
+        <div class="segmented-control" id="sem-year-control">
+          <div class="seg-item active" onclick="selectSemPart('year', '大一')">大一</div>
+          <div class="seg-item" onclick="selectSemPart('year', '大二')">大二</div>
+          <div class="seg-item" onclick="selectSemPart('year', '大三')">大三</div>
+          <div class="seg-item" onclick="selectSemPart('year', '大四')">大四</div>
+          <div class="seg-item" onclick="selectSemPart('year', '大五')">大五</div>
+          <div class="seg-item" onclick="selectSemPart('year', '大六')">大六</div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>學期</label>
+        <div class="segmented-control" id="sem-term-control">
+          <div class="seg-item active" onclick="selectSemPart('term', '上')">上學期</div>
+          <div class="seg-item" onclick="selectSemPart('term', '下')">下學期</div>
+          <div class="seg-item" onclick="selectSemPart('term', '暑')">暑修</div>
+          <div class="seg-item" onclick="selectSemPart('term', '寒')">寒修</div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:20px;">
+        <button class="btn btn-secondary" style="flex:1; padding:10px;" onclick="closeModal('add-semester-modal')">取消</button>
+        <button class="btn" style="flex:2; padding:10px; font-size:1rem; border-radius:12px; background:var(--text); color:var(--bg);" id="btn-confirm-add-sem" onclick="confirmAddSemester()">新增 大一上</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等第設定 Modal -->
+  <div class="modal" id="grade-scale-modal">
+    <div class="modal-content" style="max-width:500px;">
+      <div class="modal-header">學期績點計算設定</div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">輸入分數後將自動轉換為等第與績點。您可以自訂學校的配分標準。</div>
+      <div style="max-height:40vh; overflow-y:auto; border-radius:8px; border:1px solid var(--border);">
+        <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:center;">
+          <thead style="background:var(--table-th-bg); position:sticky; top:0;">
+            <tr><th style="padding:6px;">最低分</th><th style="padding:6px;">最高分</th><th style="padding:6px;">等第</th><th style="padding:6px;">績點(GPA)</th></tr>
+          </thead>
+          <tbody id="grade-scale-body"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top: 15px;">
+        <button class="btn btn-secondary" onclick="closeModal('grade-scale-modal')">取消</button>
+        <button class="btn btn-warning" onclick="resetGradeScale()">還原預設</button>
+        <button class="btn" onclick="saveGradeScale()">儲存設定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 帳務操作 Bottom Sheet -->
+  <div class="modal" id="billing-action-modal">
+    <div class="modal-content bottom-sheet">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">帳務操作</div>
+      <div id="billing-action-container"></div>
+      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('billing-action-modal')">取消</button>
+    </div>
+  </div>
+
+  <!-- 記帳操作 Bottom Sheet -->
+  <div class="modal" id="finance-action-modal">
+    <div class="modal-content bottom-sheet">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">記帳操作</div>
+      <div id="finance-action-container"></div>
+      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('finance-action-modal')">取消</button>
     </div>
   </div>
 

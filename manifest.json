@@ -3,7 +3,7 @@
   "short_name": "UniPocket",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0f172a",
+  "background_color": "#2563eb",
   "theme_color": "#2563eb",
   "icons": [
     {
@@ -13,7 +13,7 @@
       "purpose": "any maskable"
     },
     {
-      "src": "https://uni-pocket.pages.dev/UniPocket_png512.png",
+      "src": "./UniPocket_png512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
