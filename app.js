@@ -1465,6 +1465,17 @@ function applyTheme() {
     const btn = document.getElementById("theme-toggle-btn"); 
     if (btn) btn.innerText = state.themeMode === "dark" ? "淺色" : "深色"; 
     initThemeDropdown(); 
+
+    // 👇 【新增這段】動態抓取當前主題的背景色變數（--bg），並即時套用到狀態欄 👇
+    setTimeout(() => {
+        const currentBgColor = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim();
+        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor && currentBgColor) {
+            metaThemeColor.setAttribute("content", currentBgColor);
+        }
+    }, 50);
+    // 👆 新增結束 👆
+
     if(typeof renderSchedule === 'function') renderSchedule(); 
     saveToStorage(); 
 }
