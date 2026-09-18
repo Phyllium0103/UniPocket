@@ -1330,15 +1330,45 @@ input[type=number] { -moz-appearance: textfield; }
 
 /* 全新設定頁面樣式 */
 .setting-domain-card { background: var(--table-th-bg); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border); }
-.setting-domain-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+/* --- 將排列方式改為 Grid，讓所有輸入框完美貼齊垂直格線 --- */
+.setting-domain-row { 
+  display: grid; 
+  /* 設定格線欄位比例：打勾(20px) | 名稱(自動填滿) | 數字格子(70px) | 刪除鈕(24px) */
+  grid-template-columns: 20px 1fr 70px 24px; 
+  align-items: center; 
+  gap: 12px; 
+  margin-bottom: 8px; 
+}
 .setting-domain-row:last-child { margin-bottom: 0; }
+
 .setting-checkbox { width: 20px; height: 20px; border-radius: 6px; border: 2px solid var(--text-muted); display: flex; justify-content: center; align-items: center; cursor: pointer; transition: all 0.2s; }
 .setting-checkbox.checked { background: var(--primary); border-color: var(--primary); }
 .setting-checkbox.checked::after { content: "✓"; color: white; font-size: 12px; font-weight: bold; }
-.setting-input-clean { flex: 1; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; }
-.setting-target-input { width: 50px; text-align: right; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; border-bottom: 1px solid var(--border); }
-.setting-icon-btn { background: transparent; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; }
 
+.setting-input-clean { width: 100%; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; }
+
+/* --- 將原本只有底線的固定大小，改成隨 Grid 自動縮放的實體方格 --- */
+.setting-target-input { 
+  width: 100%; 
+  max-width: 80px; /* 在頂部總目標區塊防無限制拉伸 */
+  text-align: center; 
+  background: var(--input-bg); 
+  border: 1px solid var(--border); 
+  border-radius: 6px;
+  color: var(--text); 
+  font-size: 0.9rem; 
+  font-weight: 700; 
+  outline: none; 
+  padding: 4px 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+/* 點擊輸入時的高光反饋 */
+.setting-target-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--today-header-bg);
+}
+
+.setting-icon-btn { background: transparent; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; display: flex; justify-content: center; align-items: center; }
 /* 選擇學期彈窗 */
 .sem-switch-item { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .sem-switch-item:active { background: var(--slot-hover); }
