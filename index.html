@@ -63,7 +63,8 @@
 
     <!-- 調整 1：原本的 week-nav-btns 已移除，只保留週數文字並置中 -->
     <div class="week-nav-bar" style="justify-content: center; position: relative;">
-      <div class="week-display" id="week-range-text">載入中...</div>
+      <div class="week-display" id="week-range-text" onclick="document.getElementById('week-date-picker').showPicker ? document.getElementById('week-date-picker').showPicker() : document.getElementById('week-date-picker').click()" style="cursor: pointer; display: flex; align-items: center; gap: 4px; justify-content: center;">載入中... <span style="font-size:0.8rem; color:var(--primary);">📅</span></div>
+      <input type="date" id="week-date-picker" style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;" onchange="jumpToDate(this.value)">
       <button class="btn btn-secondary" style="position: absolute; right: 10px; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; z-index: 10;" onclick="openCreditCalculator()">學分計算機</button>
     </div>
     <div id="deadline-banner" class="deadline-banner" style="display:none;">

@@ -1553,21 +1553,100 @@ function openScheduleSelectModal() {
     (targetState.schedules || []).forEach((sch) => { 
         const isActive = sch.id === targetState.activeScheduleId; 
         const item = document.createElement("div"); 
-        item.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:${isActive ? "var(--today-header-bg)" : "transparent"}; border-radius:6px; margin-bottom:4px;`; 
+        item.className = "draggable-schedule-item";
+        item.dataset.id = sch.id;
+        item.draggable = !isViewingFriend;
+        item.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border-bottom:1px solid var(--border); background:${isActive ? "var(--today-header-bg)" : "var(--card-bg)"}; border-radius:6px; margin-bottom:4px; transition: transform 0.2s;`; 
         
-        let html = `<div>
-                        <div style="font-weight:700; font-size:0.85rem; color:${isActive ? "var(--today-header-text)" : "var(--text)"};">${escapeHtml(sch.title)}</div>
-                        <div style="font-size:0.68rem; color:var(--text-muted);">${formatSlashDate(sch.startDate)} ~ ${formatSlashDate(sch.endDate)}</div>
+        let html = `<div style="display:flex; align-items:center; gap:8px;">
+                        ${!isViewingFriend ? `<div class="drag-handle" style="color:var(--text-muted); cursor:grab; padding: 4px; font-size:1.1rem; user-select:none;">☰</div>` : ''}
+                        <div>
+                            <div style="font-weight:700; font-size:0.85rem; color:${isActive ? "var(--today-header-text)" : "var(--text)"};">${escapeHtml(sch.title)}</div>
+                            <div style="font-size:0.68rem; color:var(--text-muted);">${formatSlashDate(sch.startDate)} ~ ${formatSlashDate(sch.endDate)}</div>
+                        </div>
                     </div>
-                    <div style="display:flex; gap:4px;">
-                        ${!isActive ? `<button class="btn" style="padding:2px 6px; font-size:0.68rem;" onclick="switchActiveSchedule('${sch.id}')">切換</button>` : `<span class="tag-paid" style="font-size:0.68rem;">目前顯示中</span>`}
+                    <div style="display:flex; gap:4px; align-items:center;">
+                        ${!isActive ? `<button class="btn" style="padding:2px 6px; font-size:0.68rem;" onclick="switchActiveSchedule('${sch.id}')">切換</button>` : `<span class="tag-paid" style="font-size:0.68rem;">顯示中</span>`}
                         ${(!isViewingFriend && targetState.schedules.length > 1) ? `<button class="btn btn-danger" style="padding:2px 6px; font-size:0.68rem;" onclick="deleteSchedule('${sch.id}')">刪除</button>` : ""}
                     </div>`; 
         item.innerHTML = html;
         listEl.appendChild(item); 
     }); 
+    
+    // 加入拖曳排序監聽事件
+    if (!isViewingFriend) {
+        initScheduleDragAndDrop(listEl);
+    }
+    
     document.getElementById("schedule-select-modal").classList.add("active"); 
 }
+
+window.initScheduleDragAndDrop = function(listEl) {
+    let draggedItem = null;
+
+    Array.from(listEl.children).forEach(item => {
+        const handle = item.querySelector('.drag-handle');
+        if (!handle) return;
+        
+        const startDrag = () => {
+            draggedItem = item;
+            item.style.opacity = '0.6';
+            item.style.transform = 'scale(0.98)';
+        };
+
+        const endDrag = () => {
+            if (!draggedItem) return;
+            draggedItem.style.opacity = '1';
+            draggedItem.style.transform = 'none';
+            draggedItem = null;
+            document.body.style.overflow = '';
+            
+            // 儲存新的順序
+            const newOrderIds = Array.from(listEl.children).map(child => child.dataset.id);
+            state.schedules.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
+            saveToStorage();
+        };
+
+        // 電腦版拖移
+        item.addEventListener('dragstart', (e) => {
+            startDrag();
+            e.dataTransfer.effectAllowed = 'move';
+        });
+        item.addEventListener('dragend', endDrag);
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (!draggedItem || draggedItem === item) return;
+            const rect = item.getBoundingClientRect();
+            const next = (e.clientY - rect.top)/(rect.bottom - rect.top) > 0.5;
+            listEl.insertBefore(draggedItem, next ? item.nextSibling : item);
+        });
+
+        // 手機版觸控拖移
+        handle.addEventListener('touchstart', (e) => {
+            triggerHaptic(15);
+            startDrag();
+            document.body.style.overflow = 'hidden'; // 防止畫面跟著滾動
+        }, {passive: false});
+
+        handle.addEventListener('touchmove', (e) => {
+            if (!draggedItem) return;
+            e.preventDefault();
+            const touch = e.touches[0];
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!target) return;
+            const targetItem = target.closest('.draggable-schedule-item');
+            
+            if (targetItem && targetItem !== draggedItem) {
+                const rect = targetItem.getBoundingClientRect();
+                const next = (touch.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                listEl.insertBefore(draggedItem, next ? targetItem.nextSibling : targetItem);
+            }
+        }, {passive: false});
+
+        handle.addEventListener('touchend', endDrag);
+        handle.addEventListener('touchcancel', endDrag);
+    });
+};
 
 function switchActiveSchedule(schId) { 
     triggerHaptic(20); 
@@ -1779,6 +1858,23 @@ function formatSlashDate(dateStr) {
 
 function formatShortDate(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
 function changeWeek(offset) { triggerHaptic(15); currentWeekOffset += offset; if(typeof renderSchedule === 'function') renderSchedule(); }
+window.jumpToDate = function(dateStr) {
+    if (!dateStr) return;
+    const targetDate = parseLocalDate(dateStr);
+    
+    // 計算目標日期的週一
+    const targetMonday = getMondayOfWeek(targetDate, 0);
+    // 計算今天日期的週一
+    const todayMonday = getMondayOfWeek(new Date(), 0);
+    
+    // 計算相差的週數
+    const diffTime = targetMonday.getTime() - todayMonday.getTime();
+    const newOffset = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+    
+    currentWeekOffset = newOffset;
+    if (typeof renderSchedule === 'function') renderSchedule();
+    showToast("已跳轉至選擇的日期");
+};
 function resetCurrentWeek() { triggerHaptic(15); currentWeekOffset = 0; if(typeof renderSchedule === 'function') renderSchedule(); }
 // ========================================================
 // 課表排程繪製 (原版與 24 小時)
@@ -3370,28 +3466,29 @@ function saveClassOverride() {
 // 預設與工具函數
 // ========================================================
 function updatePresetDropdowns() {
-    const sch = state.schedules.find(s => s.id === state.activeScheduleId) || state.schedules[0];
-    
     const cSel = document.getElementById("sch-preset-select"); 
     if (cSel) { 
         cSel.innerHTML = '<option value="">-- 選擇 --</option>'; 
         const uC = {}; 
-        Object.values(sch.courses || {}).forEach((c) => { 
-            if (c.name && !uC[c.name]) { uC[c.name] = c; cSel.appendChild(new Option(c.name, JSON.stringify(c))); } 
-        }); 
-        // 👇 正確位置：放在 if (cSel) 的大括號內部，這樣才讀得到 uC 👇
-        (sch.customCourses || []).forEach((c) => { 
-            if (c.name && !uC[c.name]) { uC[c.name] = c; cSel.appendChild(new Option(c.name, JSON.stringify(c))); } 
-        }); 
+        (state.schedules || []).forEach(s => {
+            Object.values(s.courses || {}).forEach((c) => { 
+                if (c.name && !uC[c.name]) { uC[c.name] = c; cSel.appendChild(new Option(c.name, JSON.stringify(c))); } 
+            }); 
+            (s.customCourses || []).forEach((c) => { 
+                if (c.name && !uC[c.name]) { uC[c.name] = c; cSel.appendChild(new Option(c.name, JSON.stringify(c))); } 
+            }); 
+        });
     }
     
     const tSel = document.getElementById("tut-preset-select"); 
     if (tSel) { 
         tSel.innerHTML = '<option value="">-- 選擇 --</option>'; 
         const uT = {}; 
-        (sch.tutorings || []).forEach((t) => { 
-            if (t.student && !uT[t.student]) { uT[t.student] = t; tSel.appendChild(new Option(t.student, JSON.stringify(t))); } 
-        }); 
+        (state.schedules || []).forEach(s => {
+            (s.tutorings || []).forEach((t) => { 
+                if (t.student && !uT[t.student]) { uT[t.student] = t; tSel.appendChild(new Option(t.student, JSON.stringify(t))); } 
+            }); 
+        });
     }
     
     const wSel = document.getElementById("work-preset-select"); 
@@ -3413,8 +3510,25 @@ function onSelectPresetCourse(jsonStr) {
         document.getElementById("sch-name").value = c.name || ""; 
         document.getElementById("sch-room").value = c.room || ""; 
         document.getElementById("sch-teacher").value = c.teacher || ""; 
-        document.getElementById("sch-memo").value = c.memo || ""; 
-        document.getElementById("sch-credits").value = c.credits !== undefined ? c.credits : ""; 
+        
+        // 帶入學分
+        if (document.getElementById("sch-credits")) {
+            document.getElementById("sch-credits").value = c.credits !== undefined ? c.credits : ""; 
+        }
+
+        const typeSelect = document.getElementById("sch-type-select");
+        if (typeSelect) {
+            const cType = c.type || (state.credits?.domains[0]?.name || "系必修"); 
+            if (Array.from(typeSelect.options).some(o => o.value === cType)) { 
+                typeSelect.value = cType; 
+                document.getElementById("sch-type-custom-wrap").style.display = "none"; 
+            } else { 
+                typeSelect.value = "custom"; 
+                document.getElementById("sch-type-custom-wrap").style.display = "block"; 
+                document.getElementById("sch-type-custom").value = cType; 
+            }
+        }
+
         const mEl = document.getElementById("sch-is-masked"); if (mEl) mEl.checked = c.isMasked || false; 
         document.getElementById("sch-color").value = c.color || getDefaultSchoolBgHex(); 
         tempDeadlines = c.deadlines ? structuredClone(c.deadlines) : []; 
