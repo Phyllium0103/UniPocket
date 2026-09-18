@@ -1583,71 +1583,145 @@ function openScheduleSelectModal() {
 
 window.initScheduleDragAndDrop = function(listEl) {
     let draggedItem = null;
+    let ghostItem = null;
+    let placeholder = null;
+    let startX = 0, startY = 0;
+    
+    let currentDragY = 0;
+    let autoScrollInterval = null;
 
-    Array.from(listEl.children).forEach(item => {
+    // 邊緣自動滾動邏輯
+    const handleAutoScroll = () => {
+        if (autoScrollInterval) return;
+        autoScrollInterval = setInterval(() => {
+            const rect = listEl.getBoundingClientRect();
+            const threshold = 40; // 距離邊緣多少開始滾動
+            let step = 0;
+            if (currentDragY - rect.top < threshold && currentDragY > rect.top - 20) step = -8;
+            else if (rect.bottom - currentDragY < threshold && currentDragY < rect.bottom + 20) step = 8;
+
+            if (step !== 0) {
+                listEl.scrollTop += step;
+            } else {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+        }, 16);
+    };
+
+    const stopAutoScroll = () => {
+        if (autoScrollInterval) {
+            clearInterval(autoScrollInterval);
+            autoScrollInterval = null;
+        }
+    };
+
+    Array.from(listEl.children).forEach((item) => {
         const handle = item.querySelector('.drag-handle');
         if (!handle) return;
         
-        const startDrag = () => {
+        const startDrag = (clientX, clientY) => {
             draggedItem = item;
-            item.style.opacity = '0.6';
-            item.style.transform = 'scale(0.98)';
+            
+            placeholder = document.createElement('div');
+            placeholder.style.height = `${item.offsetHeight}px`;
+            placeholder.style.background = 'var(--slot-hover)';
+            placeholder.style.borderRadius = '6px';
+            placeholder.style.marginBottom = window.getComputedStyle(item).marginBottom;
+            item.parentNode.insertBefore(placeholder, item);
+
+            ghostItem = item.cloneNode(true);
+            ghostItem.style.position = 'fixed';
+            ghostItem.style.zIndex = '99999';
+            ghostItem.style.width = `${item.offsetWidth}px`;
+            ghostItem.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
+            ghostItem.style.opacity = '0.9';
+            ghostItem.style.pointerEvents = 'none';
+            ghostItem.style.transition = 'none';
+            
+            const rect = item.getBoundingClientRect();
+            startX = clientX - rect.left;
+            startY = clientY - rect.top;
+            ghostItem.style.left = `${rect.left}px`;
+            ghostItem.style.top = `${rect.top}px`;
+            
+            document.body.appendChild(ghostItem);
+            item.style.display = 'none';
+        };
+
+        const moveDrag = (clientX, clientY) => {
+            if (!draggedItem || !ghostItem) return;
+            
+            currentDragY = clientY;
+            handleAutoScroll();
+
+            ghostItem.style.left = `${clientX - startX}px`;
+            ghostItem.style.top = `${clientY - startY}px`;
+
+            const target = document.elementFromPoint(clientX, clientY);
+            if (!target) return;
+            const targetItem = target.closest('.draggable-schedule-item');
+            
+            if (targetItem && targetItem !== draggedItem && targetItem !== placeholder) {
+                const rect = targetItem.getBoundingClientRect();
+                const isAfter = (clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                listEl.insertBefore(placeholder, isAfter ? targetItem.nextSibling : targetItem);
+            }
         };
 
         const endDrag = () => {
             if (!draggedItem) return;
-            draggedItem.style.opacity = '1';
-            draggedItem.style.transform = 'none';
+            stopAutoScroll();
+            
+            placeholder.parentNode.insertBefore(draggedItem, placeholder);
+            draggedItem.style.display = 'flex'; 
+            
+            if (ghostItem) ghostItem.remove();
+            if (placeholder) placeholder.remove();
+            
             draggedItem = null;
+            ghostItem = null;
+            placeholder = null;
             document.body.style.overflow = '';
             
-            // 儲存新的順序
             const newOrderIds = Array.from(listEl.children).map(child => child.dataset.id);
             state.schedules.sort((a, b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
             saveToStorage();
         };
 
-        // 電腦版拖移
-        item.addEventListener('dragstart', (e) => {
-            startDrag();
-            e.dataTransfer.effectAllowed = 'move';
-        });
-        item.addEventListener('dragend', endDrag);
-        item.addEventListener('dragover', (e) => {
+        // 電腦版與手機版事件監聽
+        item.addEventListener('dragstart', (e) => e.preventDefault());
+        handle.addEventListener('mousedown', (e) => {
             e.preventDefault();
-            if (!draggedItem || draggedItem === item) return;
-            const rect = item.getBoundingClientRect();
-            const next = (e.clientY - rect.top)/(rect.bottom - rect.top) > 0.5;
-            listEl.insertBefore(draggedItem, next ? item.nextSibling : item);
+            startDrag(e.clientX, e.clientY);
+            const onMouseMove = (ev) => moveDrag(ev.clientX, ev.clientY);
+            const onMouseUp = () => {
+                endDrag();
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
         });
 
-        // 手機版觸控拖移
         handle.addEventListener('touchstart', (e) => {
             triggerHaptic(15);
-            startDrag();
-            document.body.style.overflow = 'hidden'; // 防止畫面跟著滾動
+            const touch = e.touches[0];
+            startDrag(touch.clientX, touch.clientY);
+            document.body.style.overflow = 'hidden';
         }, {passive: false});
 
         handle.addEventListener('touchmove', (e) => {
             if (!draggedItem) return;
             e.preventDefault();
             const touch = e.touches[0];
-            const target = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (!target) return;
-            const targetItem = target.closest('.draggable-schedule-item');
-            
-            if (targetItem && targetItem !== draggedItem) {
-                const rect = targetItem.getBoundingClientRect();
-                const next = (touch.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
-                listEl.insertBefore(draggedItem, next ? targetItem.nextSibling : targetItem);
-            }
+            moveDrag(touch.clientX, touch.clientY);
         }, {passive: false});
 
         handle.addEventListener('touchend', endDrag);
         handle.addEventListener('touchcancel', endDrag);
     });
 };
-
 function switchActiveSchedule(schId) { 
     triggerHaptic(20); 
     if (isViewingFriend) { 
@@ -4273,13 +4347,220 @@ function resetCategoriesToDefault() {
 }
 
 function renderCategoryManageList() { 
-    const t = document.getElementById("cat-manage-type").value; const list = document.getElementById("cat-manage-list"); const cats = getCategories()[t] || {}; let listHtml = ""; 
+    const t = document.getElementById("cat-manage-type").value; 
+    const list = document.getElementById("cat-manage-list"); 
+    const cats = getCategories()[t] || {}; 
+    let listHtml = ""; 
+    
     getCategoryKeys(t).forEach((p, pi) => { 
-        listHtml += `<div style="font-weight:700; font-size:0.80rem; padding:6px; background:var(--table-th-bg); margin-top:4px; display:flex; justify-content:space-between;"><span>${escapeHtml(p)}</span><div><button class="btn btn-secondary" style="padding:1px 4px; font-size:0.62rem;" onclick="catMoveMain('${escapeJS(t)}',${pi},-1)">▲主</button> <button class="btn btn-secondary" style="padding:1px 4px; font-size:0.62rem;" onclick="catMoveMain('${escapeJS(t)}',${pi},1)">▼主</button></div></div>`; 
-        (cats[p] || []).forEach((s, si) => { listHtml += `<div class="cat-manage-item"><span>└ ${escapeHtml(s)}</span><div class="cat-manage-actions"><button class="btn btn-secondary" style="padding:1px 4px; font-size:0.62rem;" onclick="catMoveSub('${escapeJS(t)}','${escapeJS(p)}',${si},-1)">▲</button> <button class="btn btn-secondary" style="padding:1px 4px; font-size:0.62rem;" onclick="catMoveSub('${escapeJS(t)}','${escapeJS(p)}',${si},1)">▼</button> <button class="btn" style="padding:1px 4px; font-size:0.62rem;" onclick="openCatMoveModal('${escapeJS(t)}','${escapeJS(p)}',${si})">搬移</button> <button class="btn" style="padding:1px 4px; font-size:0.62rem;" onclick="openCatMergeModal('${escapeJS(t)}','${escapeJS(p)}',${si})">合併</button> <button class="btn btn-danger" style="padding:1px 4px; font-size:0.62rem;" onclick="catDelete('${escapeJS(t)}','${escapeJS(p)}',${si})">刪</button></div></div>`; }); 
+        listHtml += `
+        <div class="draggable-cat-main" data-main="${escapeHtml(p)}" style="margin-bottom:10px; border:1px solid var(--border); border-radius:8px; background:var(--card-bg); transition:transform 0.2s;">
+            <div style="font-weight:700; font-size:0.85rem; padding:8px 10px; background:var(--table-th-bg); border-bottom:1px solid var(--border); border-radius:8px 8px 0 0; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <div class="drag-handle-main" style="color:var(--text-muted); cursor:grab; padding:2px; font-size:1.1rem; user-select:none;">☰</div>
+                    <span>${escapeHtml(p)}</span>
+                </div>
+            </div>
+            <div class="cat-sub-list" data-main="${escapeHtml(p)}" style="padding:0;">
+        `; 
+        (cats[p] || []).forEach((s, si) => { 
+            listHtml += `
+                <div class="cat-manage-item draggable-cat-sub" data-sub="${escapeHtml(s)}" data-idx="${si}" style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--card-bg); border-bottom:1px dashed var(--border); transition:transform 0.2s;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="drag-handle-sub" style="color:var(--text-muted); cursor:grab; padding:2px; font-size:1.1rem; user-select:none;">☰</div>
+                        <span>└ ${escapeHtml(s)}</span>
+                    </div>
+                    <div class="cat-manage-actions">
+                        <button class="gear-action-btn" style="padding:2px 8px; font-size:1.1rem;" onclick="openCategoryActionMenu('${escapeJS(t)}', '${escapeJS(p)}', ${si}, '${escapeJS(s)}')">⚙️</button>
+                    </div>
+                </div>
+            `; 
+        }); 
+        
+        // 修正最後一項的虛線底線
+        listHtml = listHtml.replace(/border-bottom:1px dashed var\(--border\);(?=[^<]*<\/div>\s*<\/div>\s*<\/div>$)/, 'border-bottom:none;');
+        listHtml += `</div></div>`;
     });
     list.innerHTML = listHtml; 
+
+    // 啟動類別清單專用的拖曳與自動滾動
+    initCategoryDragAndDrop(list, t);
 }
+
+window.openCategoryActionMenu = function(type, parentCat, subIdx, subName) {
+    triggerHaptic(10);
+    document.getElementById("category-action-subtitle").innerText = `所屬主類別：[${parentCat}]\n子類別：${subName}`;
+    const container = document.getElementById("category-action-container");
+    
+    container.innerHTML = `
+        <button class="action-menu-btn" onclick="closeModal('category-action-modal'); openCatMoveModal('${escapeJS(type)}', '${escapeJS(parentCat)}', ${subIdx})">➡️ 搬移至其他主類別</button>
+        <button class="action-menu-btn" onclick="closeModal('category-action-modal'); openCatMergeModal('${escapeJS(type)}', '${escapeJS(parentCat)}', ${subIdx})">🔄 合併至其他子類別</button>
+        <button class="action-menu-btn danger" onclick="closeModal('category-action-modal'); catDelete('${escapeJS(type)}', '${escapeJS(parentCat)}', ${subIdx})">🗑️ 刪除該類別</button>
+    `;
+    document.getElementById("category-action-modal").classList.add("active");
+};
+
+window.initCategoryDragAndDrop = function(listEl, categoryType) {
+    let draggedItem = null;
+    let ghostItem = null;
+    let placeholder = null;
+    let startX = 0, startY = 0;
+    let isMainDrag = false;
+    
+    let currentDragY = 0;
+    let autoScrollInterval = null;
+
+    const handleAutoScroll = () => {
+        if (autoScrollInterval) return;
+        autoScrollInterval = setInterval(() => {
+            const rect = listEl.getBoundingClientRect();
+            const threshold = 40;
+            let step = 0;
+            if (currentDragY - rect.top < threshold && currentDragY > rect.top - 20) step = -8;
+            else if (rect.bottom - currentDragY < threshold && currentDragY < rect.bottom + 20) step = 8;
+
+            if (step !== 0) {
+                listEl.scrollTop += step;
+            } else {
+                clearInterval(autoScrollInterval);
+                autoScrollInterval = null;
+            }
+        }, 16);
+    };
+
+    const stopAutoScroll = () => {
+        if (autoScrollInterval) {
+            clearInterval(autoScrollInterval);
+            autoScrollInterval = null;
+        }
+    };
+
+    const attachDrag = (items, handleClass, dragClass, isMain) => {
+        Array.from(items).forEach(item => {
+            const handle = item.querySelector(handleClass);
+            if (!handle) return;
+            
+            const startDrag = (clientX, clientY) => {
+                isMainDrag = isMain;
+                draggedItem = item;
+                
+                placeholder = document.createElement('div');
+                placeholder.style.height = `${item.offsetHeight}px`;
+                placeholder.style.background = 'var(--slot-hover)';
+                placeholder.style.borderRadius = '6px';
+                placeholder.style.marginBottom = window.getComputedStyle(item).marginBottom;
+                item.parentNode.insertBefore(placeholder, item);
+
+                ghostItem = item.cloneNode(true);
+                ghostItem.style.position = 'fixed';
+                ghostItem.style.zIndex = '99999';
+                ghostItem.style.width = `${item.offsetWidth}px`;
+                ghostItem.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
+                ghostItem.style.opacity = '0.9';
+                ghostItem.style.pointerEvents = 'none';
+                ghostItem.style.transition = 'none';
+                
+                const rect = item.getBoundingClientRect();
+                startX = clientX - rect.left;
+                startY = clientY - rect.top;
+                ghostItem.style.left = `${rect.left}px`;
+                ghostItem.style.top = `${rect.top}px`;
+                
+                document.body.appendChild(ghostItem);
+                item.style.display = 'none';
+            };
+
+            const moveDrag = (clientX, clientY) => {
+                if (!draggedItem || !ghostItem) return;
+                
+                currentDragY = clientY;
+                handleAutoScroll();
+                
+                ghostItem.style.left = `${clientX - startX}px`;
+                ghostItem.style.top = `${clientY - startY}px`;
+
+                const target = document.elementFromPoint(clientX, clientY);
+                if (!target) return;
+                
+                const targetItem = target.closest(dragClass);
+                
+                if (targetItem && targetItem !== draggedItem && targetItem !== placeholder) {
+                    // 如果拖曳子類別，不允許跨越不同的主類別方塊 (以防止錯誤排序)
+                    if (!isMainDrag && targetItem.parentNode !== placeholder.parentNode) return;
+                    
+                    const rect = targetItem.getBoundingClientRect();
+                    const isAfter = (clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+                    targetItem.parentNode.insertBefore(placeholder, isAfter ? targetItem.nextSibling : targetItem);
+                }
+            };
+
+            const endDrag = () => {
+                if (!draggedItem) return;
+                stopAutoScroll();
+                
+                placeholder.parentNode.insertBefore(draggedItem, placeholder);
+                draggedItem.style.display = isMainDrag ? 'block' : 'flex'; 
+                
+                if (ghostItem) ghostItem.remove();
+                if (placeholder) placeholder.remove();
+                
+                const parentList = draggedItem.parentNode;
+                
+                // 依據是主類別還是子類別，儲存至對應的 state
+                if (isMainDrag) {
+                    const newMainOrder = Array.from(parentList.querySelectorAll('.draggable-cat-main')).map(c => c.dataset.main);
+                    state.categoryOrder[categoryType] = newMainOrder;
+                } else {
+                    const mainName = parentList.dataset.main;
+                    const newSubOrder = Array.from(parentList.querySelectorAll('.draggable-cat-sub')).map(c => c.dataset.sub);
+                    getCategories()[categoryType][mainName] = newSubOrder;
+                }
+                
+                draggedItem = null;
+                ghostItem = null;
+                placeholder = null;
+                document.body.style.overflow = '';
+                
+                saveToStorage();
+            };
+
+            // 滑鼠與觸控事件
+            item.addEventListener('dragstart', (e) => e.preventDefault());
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                startDrag(e.clientX, e.clientY);
+                const onMouseMove = (ev) => moveDrag(ev.clientX, ev.clientY);
+                const onMouseUp = () => {
+                    endDrag();
+                    window.removeEventListener('mousemove', onMouseMove);
+                    window.removeEventListener('mouseup', onMouseUp);
+                };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+            });
+
+            handle.addEventListener('touchstart', (e) => {
+                triggerHaptic(15);
+                const touch = e.touches[0];
+                startDrag(touch.clientX, touch.clientY);
+                document.body.style.overflow = 'hidden';
+            }, {passive: false});
+
+            handle.addEventListener('touchmove', (e) => {
+                if (!draggedItem) return;
+                e.preventDefault();
+                const touch = e.touches[0];
+                moveDrag(touch.clientX, touch.clientY);
+            }, {passive: false});
+
+            handle.addEventListener('touchend', endDrag);
+            handle.addEventListener('touchcancel', endDrag);
+        });
+    };
+
+    attachDrag(listEl.querySelectorAll('.draggable-cat-main'), '.drag-handle-main', '.draggable-cat-main', true);
+    attachDrag(listEl.querySelectorAll('.draggable-cat-sub'), '.drag-handle-sub', '.draggable-cat-sub', false);
+};
 
 function catMoveMain(t, i, d) { const k = getCategoryKeys(t); const ti = i + d; if (ti < 0 || ti >= k.length) return; const m = k[i]; k.splice(i, 1); k.splice(ti, 0, m); state.categoryOrder[t] = k; saveToStorage(); renderCategoryManageList(); renderFinances(); }
 function catMoveSub(t, p, i, d) { const c = getCategories(); const l = c[t][p]; const ti = i + d; if (ti < 0 || ti >= l.length) return; const tmp = l[i]; l[i] = l[ti]; l[ti] = tmp; saveToStorage(); renderCategoryManageList(); renderFinances(); }
