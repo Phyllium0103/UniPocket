@@ -2936,6 +2936,18 @@ window.onSchMultiModeChange = function(mode) {
     if (tWrap) tWrap.style.display = mode === "time" ? "flex" : "none";
 };
 
+// 動態產生課程屬性選單 (根據學分計算機的設定)
+function populateSchTypeSelect() {
+    if (typeof window.ensureCreditState === 'function') window.ensureCreditState();
+    const select = document.getElementById("sch-type-select");
+    if (!select) return;
+    select.innerHTML = "";
+    (state.credits?.domains || []).forEach(d => {
+        select.appendChild(new Option(d.name, d.name));
+    });
+    select.appendChild(new Option("自訂填寫...", "custom"));
+}
+
 function openSchoolModal(day, period) {
     isMultiSelectMode = false;
     currentEditingSlot = { day, period }; 
@@ -2958,12 +2970,15 @@ function openSchoolModal(day, period) {
     document.getElementById("sch-name").value = course.name || ""; 
     document.getElementById("sch-room").value = course.room || ""; 
     document.getElementById("sch-teacher").value = course.teacher || ""; 
+    document.getElementById("sch-credits").value = course.credits !== undefined ? course.credits : ""; 
     
     const isMaskedEl = document.getElementById("sch-is-masked");
     if (isMaskedEl) isMaskedEl.checked = course.isMasked || false; 
     
+    populateSchTypeSelect();
     const typeSelect = document.getElementById("sch-type-select");
-    const cType = course.type || "必修"; 
+    const cType = course.type || (state.credits?.domains[0]?.name || "系必修"); 
+    
     if (Array.from(typeSelect.options).some(o => o.value === cType)) { 
         typeSelect.value = cType; 
         document.getElementById("sch-type-custom-wrap").style.display = "none"; 
@@ -2976,6 +2991,7 @@ function openSchoolModal(day, period) {
     document.getElementById("sch-color").value = course.color || getDefaultSchoolBgHex(); 
     document.getElementById("school-modal").classList.add("active");
 }
+
 function openMultiSchoolModal() {
     isMultiSelectMode = true;
     currentEditingSlot = null;
@@ -2992,10 +3008,12 @@ function openMultiSchoolModal() {
     document.getElementById("sch-name").value = ""; 
     document.getElementById("sch-room").value = ""; 
     document.getElementById("sch-teacher").value = ""; 
+    document.getElementById("sch-credits").value = ""; 
     
     if (document.getElementById("sch-is-masked")) document.getElementById("sch-is-masked").checked = false; 
     
-    document.getElementById("sch-type-select").value = "必修";
+    populateSchTypeSelect();
+    document.getElementById("sch-type-select").value = state.credits?.domains[0]?.name || "custom";
     document.getElementById("sch-type-custom-wrap").style.display = "none";
     document.getElementById("sch-color").value = getDefaultSchoolBgHex(); 
     
@@ -3048,7 +3066,10 @@ function saveSchoolCourse() {
     }
     
     let typeVal = document.getElementById("sch-type-select").value; 
-    if (typeVal === "custom") typeVal = document.getElementById("sch-type-custom").value.trim() || "必修";
+    if (typeVal === "custom") typeVal = document.getElementById("sch-type-custom").value.trim() || (state.credits?.domains[0]?.name || "系必修");
+    
+    let creditsVal = document.getElementById("sch-credits").value;
+    creditsVal = creditsVal === "" ? "" : Number(creditsVal);
     
     const isMaskedEl = document.getElementById("sch-is-masked");
     const isMasked = isMaskedEl ? isMaskedEl.checked : false; 
@@ -3070,7 +3091,7 @@ function saveSchoolCourse() {
                 const key = `${day}_${btn.dataset.pid}`;
                 const oldObj = sch.courses[key] || {};
                 sch.courses[key] = { 
-                    name, type: typeVal, room: finalRoom, teacher: finalTeacher, 
+                    name, type: typeVal, credits: creditsVal, room: finalRoom, teacher: finalTeacher, 
                     isMasked, color: savedColor, 
                     memo: oldObj.memo || "", 
                     deadlines: oldObj.deadlines || [],
@@ -3084,7 +3105,7 @@ function saveSchoolCourse() {
             
             const customId = "custom_" + Date.now();
             sch.customCourses.push({
-                id: customId, day: day, startTime: st, endTime: et, name: name, type: typeVal,
+                id: customId, day: day, startTime: st, endTime: et, name: name, type: typeVal, credits: creditsVal,
                 room: finalRoom, teacher: finalTeacher, isMasked: isMasked, color: savedColor,
                 memo: "", deadlines: []
             });
@@ -3094,9 +3115,9 @@ function saveSchoolCourse() {
             const targetId = currentEditingSlot.period;
             const targetCourse = sch.customCourses.find(c => c.id === targetId);
             if (targetCourse) {
-                targetCourse.name = name; targetCourse.type = typeVal; targetCourse.room = finalRoom; targetCourse.teacher = finalTeacher;
+                targetCourse.name = name; targetCourse.type = typeVal; targetCourse.credits = creditsVal;
+                targetCourse.room = finalRoom; targetCourse.teacher = finalTeacher;
                 targetCourse.isMasked = isMasked; targetCourse.color = savedColor;
-                // 不覆蓋 targetCourse.memo, targetCourse.deadlines
                 
                 const stInput = document.getElementById("sch-multi-start-time").value; const etInput = document.getElementById("sch-multi-end-time").value;
                 if (!stInput || !etInput) { showToast("自訂課程必須包含完整的起訖時間！", "error"); return; }
@@ -3106,7 +3127,7 @@ function saveSchoolCourse() {
             const key = `${currentEditingSlot.day}_${currentEditingSlot.period}`;
             const oldObj = sch.courses[key] || {};
             sch.courses[key] = { 
-                name, type: typeVal, room: finalRoom, teacher: finalTeacher, 
+                name, type: typeVal, credits: creditsVal, room: finalRoom, teacher: finalTeacher, 
                 isMasked, color: savedColor, 
                 memo: oldObj.memo || "", 
                 deadlines: oldObj.deadlines || [],
@@ -3123,7 +3144,8 @@ function saveSchoolCourse() {
         Object.keys(sch.courses).forEach(k => { 
             if (targetNames.includes(sch.courses[k].name)) { 
                 sch.courses[k].name = name; sch.courses[k].room = finalRoom; sch.courses[k].teacher = finalTeacher;
-                sch.courses[k].color = savedColor; sch.courses[k].type = typeVal; sch.courses[k].isMasked = isMasked;
+                sch.courses[k].color = savedColor; sch.courses[k].type = typeVal; 
+                sch.courses[k].credits = creditsVal; sch.courses[k].isMasked = isMasked;
             } 
         });
         
@@ -3131,7 +3153,8 @@ function saveSchoolCourse() {
             sch.customCourses.forEach(c => {
                 if (targetNames.includes(c.name)) {
                     c.name = name; c.room = finalRoom; c.teacher = finalTeacher; 
-                    c.color = savedColor; c.type = typeVal; c.isMasked = isMasked;
+                    c.color = savedColor; c.type = typeVal; 
+                    c.credits = creditsVal; c.isMasked = isMasked;
                 }
             });
         }
@@ -3139,7 +3162,6 @@ function saveSchoolCourse() {
     
     saveToStorage(); renderSchedule(); closeModal("school-modal"); showToast("課程儲存成功");
 }
-
 // 連帶修改 deleteSchoolCourse 以支援刪除 customCourse
 function deleteSchoolCourse() { 
     if (!currentEditingSlot) return; 
@@ -3388,11 +3410,15 @@ function onSelectPresetCourse(jsonStr) {
     if (!jsonStr) return; 
     try { 
         const c = JSON.parse(jsonStr); 
-        document.getElementById("sch-name").value = c.name || ""; document.getElementById("sch-room").value = c.room || ""; document.getElementById("sch-teacher").value = c.teacher || ""; document.getElementById("sch-memo").value = c.memo || ""; 
+        document.getElementById("sch-name").value = c.name || ""; 
+        document.getElementById("sch-room").value = c.room || ""; 
+        document.getElementById("sch-teacher").value = c.teacher || ""; 
+        document.getElementById("sch-memo").value = c.memo || ""; 
+        document.getElementById("sch-credits").value = c.credits !== undefined ? c.credits : ""; 
         const mEl = document.getElementById("sch-is-masked"); if (mEl) mEl.checked = c.isMasked || false; 
         document.getElementById("sch-color").value = c.color || getDefaultSchoolBgHex(); 
         tempDeadlines = c.deadlines ? structuredClone(c.deadlines) : []; 
-        renderModalDeadlines();
+        if(typeof renderModalDeadlines === 'function') renderModalDeadlines();
     } catch(e) { console.error(e); } 
 }
 function onSchTypeChange(val) { document.getElementById("sch-type-custom-wrap").style.display = val === "custom" ? "block" : "none"; }
@@ -3501,18 +3527,21 @@ function renderBillings() {
             const dateParts = dateStr.split('-');
             const dateHtml = dateParts.length === 3 ? `${dateParts[0]}<br>${dateParts[1]}-${dateParts[2]}` : dateStr;
 
+            // 將狀態文字替換為打勾或叉叉的圖示
+            const statusIcon = record.status === "paid" ? "✔️" : "❌";
+            const statusClass = record.status === "paid" ? "tag-paid" : "tag-unpaid";
+
             tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}</td>
                             <td><strong>${escapeHtml(isWork ? record.name : record.student)}</strong></td>
                             <td><strong style="color:var(--primary);">$${record.total}</strong></td>
-                            <td><span class="${record.status === "paid" ? "tag-paid" : "tag-unpaid"}">${record.status === "paid" ? "已清" : "未清"}</span></td>
+                            <td style="text-align:center;"><span class="${statusClass}" style="display:inline-flex; align-items:center; justify-content:center; padding:2px 6px;">${statusIcon}</span></td>
                             <td>${escapeHtml(record.notes || "-")}</td>
-                            <td><button class="gear-action-btn" onclick="openBillingActionMenu(${idx}, ${isWork})">⚙️</button></td>`;
+                            <td style="text-align:center;"><button class="gear-action-btn" onclick="openBillingActionMenu(${idx}, ${isWork})">⚙️</button></td>`;
             fragment.appendChild(tr);
         }); 
     }
     tbody.innerHTML = ""; tbody.appendChild(fragment);
     
-    // 隱藏總時數欄位
     const thTitle = document.getElementById("stat-total-hours");
     if(thTitle) thTitle.parentElement.style.display = "none";
     document.getElementById("stat-total-income").innerText = `$${tI.toLocaleString()}`; document.getElementById("stat-unpaid").innerText = `$${tU.toLocaleString()}`;
@@ -3969,7 +3998,6 @@ function renderFinances() {
     const selectedMonth = document.getElementById("fin-month-filter").value; 
     const sortOrder = document.getElementById("fin-sort-order").value; 
 
-    // 👇 新增的按鈕亮色邏輯 👇
     const btnFinCur = document.getElementById("btn-fin-month-current");
     const btnFinAll = document.getElementById("btn-fin-month-all");
     if (btnFinCur && btnFinAll) {
@@ -4013,7 +4041,7 @@ function renderFinances() {
 
     const fragment = document.createDocumentFragment();
     if (filteredFinances.length === 0) {
-        const tr = document.createElement("tr"); tr.innerHTML = `<td colspan="6" style="text-align:center; padding:12px;">無紀錄</td>`; fragment.appendChild(tr);
+        const tr = document.createElement("tr"); tr.innerHTML = `<td colspan="5" style="text-align:center; padding:12px;">無紀錄</td>`; fragment.appendChild(tr);
     } else {
         filteredFinances.forEach(i => {
             const amt = Number(i.amount); const rem = i.remaining !== undefined ? i.remaining : amt; const tl = lbls[i.type]; 
@@ -4027,14 +4055,14 @@ function renderFinances() {
             const dateStr = i.date || "";
             const dateParts = dateStr.split('-');
             const dateHtml = dateParts.length === 3 ? `${dateParts[0]}<br>${dateParts[1]}-${dateParts[2]}` : dateStr;
-            
             const strippedParentCat = (i.parentCat || "").replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, '');
             
+            // 這裡將主類別與子類別拆成兩行，並移除斜線
             tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}<br><span class="${tl.c}" style="display:inline-block; margin-top:4px;">${tl.n}</span></td>
-                <td><strong>${escapeHtml(strippedParentCat)}</strong> <span style="color:var(--text-muted);">/ ${escapeHtml(i.subCat)}</span> ${i.isHidden?'<span class="tag-hidden">已隱藏</span>':''}</td>
+                <td><strong>${escapeHtml(strippedParentCat)}</strong><br><span style="color:var(--text-muted); font-size:0.75rem;">${escapeHtml(i.subCat)}</span> ${i.isHidden?'<span class="tag-hidden">隱藏</span>':''}</td>
                 <td><strong style="color:${(i.type==='income'||i.type==='receivable')?'#10b981':'#ef4444'};">${dAmt}</strong></td>
                 <td>${escapeHtml(i.notes||"-")}</td>
-                <td>${ex}</td>`;
+                <td style="text-align:center;">${ex}</td>`;
             fragment.appendChild(tr);
         });
     }
@@ -4920,14 +4948,18 @@ window.confirmImportSchedule = function(sem, schId) {
             if (existingNames.has(c.name)) return; 
             existingNames.add(c.name);
             
-            let mappedCat = c.type || "系必修";
+            // 讀取設定好的屬性，如果計算機沒有這個領域則歸類到首個領域或自訂
+            let mappedCat = c.type;
             if (!state.credits.domains.some(d => d.name === mappedCat)) {
                 mappedCat = state.credits.domains[0]?.name || "自訂";
             }
             
+            // 讀取學分，如果未設定則預設帶入 2
+            let importedCredits = (c.credits !== undefined && c.credits !== "") ? Number(c.credits) : 2;
+            
             state.credits.semesters[sem].push({
                 id: "cc_" + Date.now() + Math.floor(Math.random()*1000),
-                name: c.name, category: mappedCat, credits: 2, score: "", grade: "", gpa: ""
+                name: c.name, category: mappedCat, credits: importedCredits, score: "", grade: "", gpa: ""
             });
             addCount++;
         });
