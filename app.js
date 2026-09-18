@@ -4443,7 +4443,10 @@ window.initCategoryDragAndDrop = function(listEl, categoryType) {
             const startDrag = (clientX, clientY) => {
                 isMainDrag = isMain;
                 draggedItem = item;
-                
+
+                // 💡 關鍵修復 1：在插入 placeholder 之前，先取得元素原本的正確位置！
+                const rect = item.getBoundingClientRect();
+
                 placeholder = document.createElement('div');
                 placeholder.style.height = `${item.offsetHeight}px`;
                 placeholder.style.background = 'var(--slot-hover)';
@@ -4455,17 +4458,18 @@ window.initCategoryDragAndDrop = function(listEl, categoryType) {
                 ghostItem.style.position = 'fixed';
                 ghostItem.style.zIndex = '99999';
                 ghostItem.style.width = `${item.offsetWidth}px`;
+                ghostItem.style.margin = '0'; // 💡 關鍵修復 2：消除殘影可能的預設外距干擾
                 ghostItem.style.boxShadow = '0 10px 25px rgba(0,0,0,0.25)';
                 ghostItem.style.opacity = '0.9';
                 ghostItem.style.pointerEvents = 'none';
                 ghostItem.style.transition = 'none';
-                
-                const rect = item.getBoundingClientRect();
+
+                // 這裡繼續使用剛剛已經記下來的正確 rect 座標
                 startX = clientX - rect.left;
                 startY = clientY - rect.top;
                 ghostItem.style.left = `${rect.left}px`;
                 ghostItem.style.top = `${rect.top}px`;
-                
+
                 document.body.appendChild(ghostItem);
                 item.style.display = 'none';
             };
