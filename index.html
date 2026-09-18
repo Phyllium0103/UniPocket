@@ -1016,11 +1016,10 @@
       
       <div class="setting-domain-card" style="margin-bottom: 16px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">畢業學分目標</span>
-          <div style="display:flex; align-items:center; gap:4px;">
-            <span id="settings-current-total" style="color:var(--primary); font-weight:800;">0</span>
-            <span style="color:var(--text-muted);">/</span>
-            <input type="number" id="credit-setting-total" class="setting-target-input">
+          <span style="font-size:0.9rem; font-weight:600; color:var(--text-muted);">總目標學分 (依下方領域自動加總)</span>
+          <div style="display:flex; align-items:baseline; gap:4px;">
+            <span id="settings-current-total" style="color:var(--primary); font-size:1.2rem; font-weight:800;">0</span>
+            <span style="color:var(--text-muted); font-size:0.8rem;">學分</span>
           </div>
         </div>
       </div>
@@ -1072,7 +1071,7 @@
     <div class="modal-content" style="max-width:500px;">
       <div class="modal-header">學期績點計算設定</div>
       <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">輸入分數後將自動轉換為等第與績點。您可以自訂學校的配分標準。</div>
-      <div style="max-height:40vh; overflow-y:auto; border-radius:8px; border:1px solid var(--border);">
+      <div style="border-radius:8px; border:1px solid var(--border); overflow: hidden;">
         <table style="width:100%; border-collapse:collapse; font-size:0.8rem; text-align:center;">
           <thead style="background:var(--table-th-bg); position:sticky; top:0;">
             <tr><th style="padding:6px;">最低分</th><th style="padding:6px;">最高分</th><th style="padding:6px;">等第</th><th style="padding:6px;">績點(GPA)</th></tr>

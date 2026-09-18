@@ -177,8 +177,8 @@ function createDefaultState() {
         }],
         // 👇 新增學分計算機預設結構 👇
         credits: {
-            targetTotal: 128,
-            targets: { "系必修": 50, "系選修": 30, "通識": 28, "共同必修": 10, "自由選修": 10 },
+            targetTotal: 0,
+            targets: { "系必修": 0, "系選修": 0, "通識": 0, "共同必修": 0, "自由選修": 0 },
             semesterOrder: ["大一上", "大一下", "大二上", "大二下", "大三上", "大三下", "大四上", "大四下"],
             semesters: { "大一上": [], "大一下": [], "大二上": [], "大二下": [], "大三上": [], "大三下": [], "大四上": [], "大四下": [] }
         }
@@ -4805,24 +4805,32 @@ window.ensureCreditState = function() {
     let needsSave = false; // 追蹤是否進行了結構升級
     
     if (!state.credits) { state.credits = {}; needsSave = true; }
-    if (!state.credits.targetTotal) { state.credits.targetTotal = 128; needsSave = true; }
     if (!state.credits.semesterOrder) { state.credits.semesterOrder = ["大一上", "大一下", "大二上", "大二下", "大三上", "大三下", "大四上", "大四下"]; needsSave = true; }
     if (!state.credits.semesters) { state.credits.semesters = { "大一上": [], "大一下": [], "大二上": [], "大二下": [], "大三上": [], "大三下": [], "大四上": [], "大四下": [] }; needsSave = true; }
     if (!state.credits.gradeScale) { state.credits.gradeScale = structuredClone(DEFAULT_GRADE_SCALE); needsSave = true; }
     
+    // 初始化領域，預設全為 0
     if (!state.credits.domains) {
-        let oldTargets = state.credits.targets || { "系必修": 50, "系選修": 30, "通識": 28, "共同必修": 10, "自由選修": 10 };
+        let oldTargets = state.credits.targets || {};
         state.credits.domains = [
-            { name: "系必修", target: oldTargets["系必修"] || 50, isMajor: true, canDelete: false },
-            { name: "系選修", target: oldTargets["系選修"] || 30, isMajor: true, canDelete: true },
-            { name: "通識", target: oldTargets["通識"] || 28, isMajor: false, canDelete: true },
-            { name: "共同必修", target: oldTargets["共同必修"] || 10, isMajor: false, canDelete: true },
-            { name: "自由選修", target: oldTargets["自由選修"] || 10, isMajor: false, canDelete: true }
+            { name: "系必修", target: oldTargets["系必修"] || 0, isMajor: true, canDelete: false },
+            { name: "系選修", target: oldTargets["系選修"] || 0, isMajor: true, canDelete: true },
+            { name: "通識", target: oldTargets["通識"] || 0, isMajor: false, canDelete: true },
+            { name: "共同必修", target: oldTargets["共同必修"] || 0, isMajor: false, canDelete: true },
+            { name: "自由選修", target: oldTargets["自由選修"] || 0, isMajor: false, canDelete: true }
         ];
         needsSave = true;
     }
 
-    // 🔑 關鍵修復：只要有幫忙補齊結構，就自動觸發一次儲存，將更新後的結構推上雲端
+    // 強制動態更新總目標學分為「所有領域的加總」
+    if (state.credits.domains) {
+        const dynamicTotal = state.credits.domains.reduce((sum, d) => sum + (Number(d.target) || 0), 0);
+        if (state.credits.targetTotal !== dynamicTotal) {
+            state.credits.targetTotal = dynamicTotal;
+            needsSave = true;
+        }
+    }
+
     if (needsSave) {
         saveToStorage();
     }
@@ -4834,8 +4842,14 @@ window.openCreditCalculator = function() {
     if (!window.currentCreditSemester && state.credits.semesterOrder.length > 0) {
         window.currentCreditSemester = state.credits.semesterOrder[0];
     }
-    renderCreditCalculator();
+    
+    // 1. 先把 Modal 打開，讓容器具備實際寬度
     document.getElementById("credit-calculator-modal").classList.add("active");
+    
+    // 2. 微小延遲確保 CSS 渲染完畢後，再畫折線圖
+    setTimeout(() => {
+        renderCreditCalculator();
+    }, 10);
 };
 
 // ================= 學期切換相關 =================
@@ -4872,6 +4886,10 @@ window.renderCreditCalculator = function() {
     let majorHundredScoreSum = 0, majorHundredCredSum = 0;
     let semesterTrends = [];
 
+    // 👇 新增：準備用來統計等第與總學分的變數 👇
+    let gradeCredits = {};
+    let totalGradedCredits = 0;
+
     const majorDomains = data.domains.filter(d => d.isMajor).map(d => d.name);
 
     data.semesterOrder.forEach(sem => {
@@ -4903,13 +4921,20 @@ window.renderCreditCalculator = function() {
                     majorHundredScoreSum += wHundred; majorHundredCredSum += cr;
                 }
             }
+
+            // 👇 新增：累加該門課的「等第」與對應「學分」 👇
+            if (c.grade && cr > 0 && c.grade !== "-") {
+                if (!gradeCredits[c.grade]) gradeCredits[c.grade] = 0;
+                gradeCredits[c.grade] += cr;
+                totalGradedCredits += cr;
+            }
         });
         if (semCredSum > 0) {
             semesterTrends.push({ name: sem, avgScore: (semScoreSum / semCredSum).toFixed(2) });
         }
     });
 
-    const totalPct = Math.min(100, (currentTotal / data.targetTotal) * 100).toFixed(0);
+    const totalPct = data.targetTotal > 0 ? Math.min(100, (currentTotal / data.targetTotal) * 100).toFixed(0) : 0;
     const overallGpa = totalCredSum > 0 ? (totalScoreSum / totalCredSum).toFixed(2) : "—";
     const majorGpa = majorCredSum > 0 ? (majorScoreSum / majorCredSum).toFixed(2) : "—";
     const overallAvg = hundredCredSum > 0 ? (hundredScoreSum / hundredCredSum).toFixed(1) : "—";
@@ -4939,6 +4964,43 @@ window.renderCreditCalculator = function() {
     });
     html += `</div><div class="credit-chart-container" style="border:none; padding:0; background:transparent;">${getCreditTrendSVG(semesterTrends)}</div>`;
 
+    // 👇 新增：等第分佈長條圖 👇
+    if (totalGradedCredits > 0) {
+        // 設定標準的等第排序順序，確保圖表從 A+ 開始排下來
+        const standardOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "E", "F", "X", "抵免", "通過", "免修"];
+        const sortedGrades = Object.keys(gradeCredits).sort((a, b) => {
+            let idxA = standardOrder.indexOf(a);
+            let idxB = standardOrder.indexOf(b);
+            if (idxA === -1) idxA = 99;
+            if (idxB === -1) idxB = 99;
+            return idxA - idxB;
+        });
+
+        html += `<div class="domain-list-card" style="margin-top: 0px; margin-bottom: 16px;">`;
+        html += `<h4 style="font-size:0.8rem; text-align:center; margin-top:0; margin-bottom:12px; color:var(--text);">等第分佈 (依學分比例)</h4>`;
+
+        sortedGrades.forEach((grade, index) => {
+            const cr = gradeCredits[grade];
+            const pct = (cr / totalGradedCredits) * 100;
+            
+            // 替不同的等第設定顏色 (不及格為紅色，特殊分數為綠色)
+            let barColor = "var(--primary)";
+            if (["D", "E", "F", "X"].includes(grade)) barColor = "#ef4444";
+            else if (["通過", "抵免", "免修"].includes(grade)) barColor = "#10b981";
+
+            html += `
+                <div style="display:flex; align-items:center; margin-bottom:${index === sortedGrades.length - 1 ? '0' : '8px'}; font-size:0.8rem;">
+                    <div style="width: 40px; font-weight:700; color:var(--text);">${escapeHtml(grade)}</div>
+                    <div style="flex:1; height:8px; background:var(--table-th-bg); border-radius:4px; margin:0 10px; overflow:hidden;">
+                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4px;"></div>
+                    </div>
+                    <div style="width: 45px; text-align:right; color:var(--text-muted); font-weight:600;">${pct.toFixed(1)}%</div>
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
+
     // 單一學期課程清單與左滑刪除
     let sem = window.currentCreditSemester;
     if (sem) {
@@ -4947,7 +5009,7 @@ window.renderCreditCalculator = function() {
             <div style="display:flex; justify-content:space-between; align-items:center; margin: 16px 0 8px 0;">
                 <h4 style="font-size:0.9rem; margin:0; color:var(--text);">${escapeHtml(sem)}</h4>
                 <div>
-                    <button style="padding:4px 10px; border-radius:12px; font-size:0.75rem; background:transparent; color:var(--primary); border:1px solid var(--primary); cursor:pointer; font-weight:bold; outline:none;" onclick="openImportScheduleModal('${escapeJS(sem)}')">📥 匯入課表</button>
+                    <button style="padding:4px 10px; border-radius:12px; font-size:0.75rem; background:transparent; color:var(--primary); border:1px solid var(--primary); cursor:pointer; font-weight:bold; outline:none;" onclick="openImportScheduleModal('${escapeJS(sem)}')">匯入課表</button>
                 </div>
             </div>
         `;
@@ -5413,7 +5475,6 @@ window.resetGradeScale = function() {
 
 // ================= 設定領域與目標 =================
 window.openCreditSettings = function() {
-    document.getElementById("credit-setting-total").value = state.credits.targetTotal;
     window.renderSettingsDomainList();
     document.getElementById("credit-settings-modal").classList.add("active");
 };
@@ -5451,6 +5512,8 @@ window.toggleDomainMajor = function(idx) {
 
 window.updateDomainTarget = function(idx, val) {
     state.credits.domains[idx].target = parseFloat(val) || 0;
+    // 更新數值時，立即重新計算總和
+    state.credits.targetTotal = state.credits.domains.reduce((sum, d) => sum + (Number(d.target) || 0), 0);
     saveToStorage();
     window.renderSettingsDomainList();
 };
@@ -5471,22 +5534,17 @@ window.updateDomainName = function(idx, val) {
     window.renderSettingsDomainList();
 };
 
-window.addCreditDomain = function() {
-    state.credits.domains.push({ name: "新領域", target: 0, isMajor: false, canDelete: true });
-    saveToStorage();
-    window.renderSettingsDomainList();
-};
-
 window.deleteCreditDomain = function(idx) {
     showConfirm("確定刪除此領域？", () => {
         state.credits.domains.splice(idx, 1);
+        state.credits.targetTotal = state.credits.domains.reduce((sum, d) => sum + (Number(d.target) || 0), 0);
         saveToStorage();
         window.renderSettingsDomainList();
     });
 };
 
 window.saveCreditSettings = function() {
-    state.credits.targetTotal = parseFloat(document.getElementById("credit-setting-total").value) || 128;
+    // 總和已經即時更新過了，直接存檔渲染即可
     saveToStorage();
     renderCreditCalculator();
     showToast("設定已儲存");
@@ -5686,7 +5744,7 @@ function toggleCustomDpMode(forceToggle) {
     if (isCustomDpManual) {
         viewGrid.style.display = 'none';
         viewManual.style.display = 'flex';
-        btn.innerHTML = '📅 網格選擇';
+        btn.innerHTML = '網格選擇';
 
         const parts = customDpSelectedDate.split('-');
         if (parts.length === 3) {
@@ -5697,7 +5755,7 @@ function toggleCustomDpMode(forceToggle) {
     } else {
         viewGrid.style.display = 'block';
         viewManual.style.display = 'none';
-        btn.innerHTML = '⌨️ 手動輸入';
+        btn.innerHTML = '手動輸入';
     }
 }
 
