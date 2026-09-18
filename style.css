@@ -1404,3 +1404,101 @@ input[type=number] { -moz-appearance: textfield; }
   padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
   animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
+
+/* ================= 自訂日曆元件 (亞克力浮雕版) ================= */
+.custom-dp-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.3); display: none;
+  justify-content: center; align-items: center; z-index: 999999;
+  opacity: 0; transition: opacity 0.2s ease;
+}
+.custom-dp-overlay.active { display: flex; opacity: 1; }
+
+/* 1. 外凸浮雕容器 */
+.custom-dp-container {
+  width: 320px; padding: 20px; box-sizing: border-box;
+  background: var(--card-bg); color: var(--text);
+  border-radius: 20px; border: none;
+  /* 核心浮雕陰影：右下暗色，左上微亮色 (適應深淺色主題) */
+  box-shadow: 8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.05);
+  transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.custom-dp-overlay.active .custom-dp-container { transform: scale(1); }
+
+.custom-dp-bottom { 
+  display: flex; justify-content: space-between; align-items: center; 
+  margin-top: 20px; 
+}
+
+/* 2. 外凸浮雕按鈕 (模式切換與左右箭頭) */
+.custom-dp-toggle, .custom-dp-nav {
+  background: var(--card-bg); border: none;
+  color: var(--text); padding: 6px 12px; border-radius: 10px;
+  font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: 0.2s;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px rgba(255,255,255,0.05);
+}
+/* 點擊時變成內凹 */
+.custom-dp-toggle:active, .custom-dp-nav:active { 
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05);
+}
+
+.custom-dp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+
+/* 3. 內凹浮雕選單 (年月下拉) */
+.custom-dp-selects select {
+  background: var(--input-bg); border: none;
+  color: var(--text); font-weight: 700; font-size: 0.95rem;
+  padding: 6px 8px; border-radius: 8px; outline: none; margin: 0 4px;
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.08), inset -2px -2px 4px rgba(255,255,255,0.05);
+}
+
+.custom-dp-week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; font-weight: bold; }
+.custom-dp-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+/* 4. 日曆網格浮雕設定 */
+.custom-dp-cell {
+  aspect-ratio: 1; display: flex; justify-content: center; align-items: center;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer; border-radius: 10px; 
+  transition: 0.2s; background: var(--card-bg); border: none;
+}
+/* 懸停微凸 */
+.custom-dp-cell:hover { 
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.08), -2px -2px 5px rgba(255,255,255,0.05); 
+}
+/* 選中時重度內凹並上色 */
+.custom-dp-cell.selected { 
+  background: var(--primary); color: #fff; font-weight: bold; 
+  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2), inset -3px -3px 6px rgba(255,255,255,0.1); 
+}
+
+/* ================= 5. 手動輸入區 (內凹槽) ================= */
+.custom-dp-manual { display: none; flex-direction: column; gap: 20px; padding: 10px 0; }
+.custom-dp-input-group {
+  display: flex; justify-content: center; align-items: center;
+  background: var(--input-bg); border: none;
+  border-radius: 12px; padding: 15px;
+  /* 強烈的內凹陰影，做出挖空的感覺 */
+  box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.05);
+}
+.custom-dp-input-group input {
+  background: transparent; border: none; outline: none; padding: 0;
+  color: var(--text); font-size: 1.2rem; font-weight: 700; text-align: center;
+}
+.custom-dp-input-group input::placeholder { color: var(--text-muted); opacity: 0.4; }
+.custom-dp-input-group span { font-size: 1.2rem; color: var(--text-muted); font-weight: 300; margin: 0 5px; }
+
+/* 確定按鈕外凸 */
+.custom-dp-confirm {
+  width: 100%; padding: 12px; border-radius: 12px;
+  background: var(--primary); color: #fff; font-size: 1rem; font-weight: bold;
+  border: none; cursor: pointer; transition: 0.2s;
+  box-shadow: 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.05);
+}
+.custom-dp-confirm:active { 
+  transform: scale(0.98); 
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2); 
+}
+
+/* 全局隱藏原生日期選擇器圖示，並修正鼠標 */
+input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
+input[type="date"] { cursor: pointer; user-select: none; }

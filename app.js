@@ -1911,6 +1911,8 @@ function init() {
         splashScreen.addEventListener('touchstart', dismissSplash);
     }
     setTimeout(() => { dismissSplash(); }, 2500);
+
+    initCustomDatePicker();
 }
 
 function getMondayOfWeek(d, offsetWeeks = 0) { 
@@ -5543,6 +5545,208 @@ window.openFinanceActionMenu = function(id) {
     container.innerHTML = html;
     document.getElementById("finance-action-modal").classList.add("active");
 };
+
+// ========================================================
+// 自訂日曆系統 (Custom Date Picker) 核心邏輯
+// ========================================================
+let customDpActiveInput = null;
+let customDpYear = 2026;
+let customDpMonth = 8;
+let customDpSelectedDate = "";
+let isCustomDpManual = false;
+
+function initCustomDatePicker() {
+    const selYear = document.getElementById('custom-dp-sel-year');
+    const selMonth = document.getElementById('custom-dp-sel-month');
+    if (!selYear || !selMonth) return;
+
+    // 建立年份 (2000 ~ 2100)
+    selYear.innerHTML = '';
+    for (let y = 2000; y <= 2100; y++) {
+        selYear.appendChild(new Option(`${y}年`, y));
+    }
+    // 建立月份 (0 ~ 11)
+    selMonth.innerHTML = '';
+    for (let m = 0; m < 12; m++) {
+        selMonth.appendChild(new Option(`${String(m + 1).padStart(2, '0')}月`, m));
+    }
+
+    // 攔截頁面上所有的 input[type="date"]
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.setAttribute('readonly', 'readonly'); // 防止原生小鍵盤彈出
+        // 覆寫原生 showPicker 方法 (防止被舊代碼呼叫)
+        input.showPicker = function() { this.click(); };
+        
+        input.addEventListener('click', function(e) {
+            e.preventDefault();
+            openCustomDatePicker(this);
+        });
+    });
+
+    // 綁定背景點擊關閉
+    document.getElementById('custom-dp-overlay').addEventListener('click', function(e) {
+        if (e.target === this) closeCustomDatePicker();
+    });
+
+    // 手動輸入自動跳轉機制 (YYYY -> MM -> DD)
+    const inY = document.getElementById('custom-dp-in-yyyy');
+    const inM = document.getElementById('custom-dp-in-mm');
+    const inD = document.getElementById('custom-dp-in-dd');
+    
+    inY.addEventListener('input', function() { if (this.value.length === 4) inM.focus(); });
+    inM.addEventListener('input', function() { if (this.value.length === 2) inD.focus(); });
+    inD.addEventListener('keypress', function(e) { if (e.key === 'Enter') confirmCustomDpManual(); });
+}
+
+function openCustomDatePicker(targetInput) {
+    triggerHaptic(10);
+    customDpActiveInput = targetInput;
+    let initDateStr = targetInput.value;
+    
+    // 若原本沒值，預設給今天
+    if (!initDateStr) initDateStr = formatDate(new Date());
+
+    const dateObj = new Date(initDateStr);
+    if (!isNaN(dateObj.getTime())) {
+        customDpYear = dateObj.getFullYear();
+        customDpMonth = dateObj.getMonth();
+        customDpSelectedDate = initDateStr;
+    }
+
+    renderCustomDpGrid();
+    document.getElementById('custom-dp-overlay').classList.add('active');
+    
+    // 若上次是手動模式，自動切回網格模式體驗較好
+    if (isCustomDpManual) toggleCustomDpMode(false);
+}
+
+function renderCustomDpGrid() {
+    document.getElementById('custom-dp-sel-year').value = customDpYear;
+    document.getElementById('custom-dp-sel-month').value = customDpMonth;
+
+    const grid = document.getElementById('custom-dp-grid');
+    grid.innerHTML = '';
+
+    const firstDay = new Date(customDpYear, customDpMonth, 1).getDay();
+    const daysInMonth = new Date(customDpYear, customDpMonth + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+        grid.appendChild(document.createElement('div'));
+    }
+
+    for (let i = 1; i <= daysInMonth; i++) {
+        const cell = document.createElement('div');
+        const dStr = `${customDpYear}-${String(customDpMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        
+        cell.className = 'custom-dp-cell' + (dStr === customDpSelectedDate ? ' selected' : '');
+        cell.innerText = i;
+        cell.onclick = () => {
+            triggerHaptic(10);
+            selectCustomDpDate(dStr);
+        };
+        grid.appendChild(cell);
+    }
+}
+
+function changeCustomDpMonth(offset) {
+    triggerHaptic(10);
+    customDpMonth += offset;
+    if (customDpMonth < 0) { customDpMonth = 11; customDpYear--; }
+    else if (customDpMonth > 11) { customDpMonth = 0; customDpYear++; }
+    renderCustomDpGrid();
+}
+
+function jumpCustomDpDate() {
+    triggerHaptic(10);
+    customDpYear = parseInt(document.getElementById('custom-dp-sel-year').value);
+    customDpMonth = parseInt(document.getElementById('custom-dp-sel-month').value);
+    renderCustomDpGrid();
+}
+
+function selectCustomDpDate(dateStr) {
+    customDpSelectedDate = dateStr;
+    renderCustomDpGrid();
+    
+    // 把選好的值塞回原本的 input，並發送 onchange 事件觸發你原本的存檔邏輯
+    if (customDpActiveInput) {
+        customDpActiveInput.value = dateStr;
+        const evt = new Event('change', { bubbles: true });
+        customDpActiveInput.dispatchEvent(evt);
+    }
+    setTimeout(() => closeCustomDatePicker(), 150);
+}
+
+function toggleCustomDpMode(forceToggle) {
+    triggerHaptic(10);
+    isCustomDpManual = forceToggle !== undefined ? forceToggle : !isCustomDpManual;
+    const viewGrid = document.getElementById('custom-dp-view-grid');
+    const viewManual = document.getElementById('custom-dp-view-manual');
+    const btn = document.getElementById('custom-dp-toggle-btn');
+
+    if (isCustomDpManual) {
+        viewGrid.style.display = 'none';
+        viewManual.style.display = 'flex';
+        btn.innerHTML = '📅 網格選擇';
+
+        const parts = customDpSelectedDate.split('-');
+        if (parts.length === 3) {
+            document.getElementById('custom-dp-in-yyyy').value = parts[0];
+            document.getElementById('custom-dp-in-mm').value = parts[1];
+            document.getElementById('custom-dp-in-dd').value = parts[2];
+        }
+    } else {
+        viewGrid.style.display = 'block';
+        viewManual.style.display = 'none';
+        btn.innerHTML = '⌨️ 手動輸入';
+    }
+}
+
+function confirmCustomDpManual() {
+    triggerHaptic(10);
+    const y = document.getElementById('custom-dp-in-yyyy').value.trim();
+    const m = document.getElementById('custom-dp-in-mm').value.trim();
+    const d = document.getElementById('custom-dp-in-dd').value.trim();
+
+    if (y.length !== 4 || m.length === 0 || d.length === 0) {
+        showToast('請完整輸入 YYYY / MM / DD', 'error');
+        return;
+    }
+
+    const dateStr = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const dateObj = new Date(dateStr);
+
+    if (!isNaN(dateObj.getTime()) && dateObj.getFullYear() == y && dateObj.getMonth() + 1 == m && dateObj.getDate() == d) {
+        selectCustomDpDate(dateStr);
+    } else {
+        showToast('無效的日期，請檢查是否輸入錯誤', 'error');
+    }
+}
+
+function closeCustomDatePicker() {
+    document.getElementById('custom-dp-overlay').classList.remove('active');
+    if (isCustomDpManual) setTimeout(() => toggleCustomDpMode(false), 200);
+}
+
+function jumpCustomDpToToday() {
+    triggerHaptic(10);
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+    
+    // 更新日曆內部狀態為今天
+    customDpYear = today.getFullYear();
+    customDpMonth = today.getMonth();
+    
+    // 如果目前在「手動輸入」模式，點擊今天時自動切回網格模式
+    if (isCustomDpManual) {
+        toggleCustomDpMode(false);
+    }
+    
+    // 直接觸發選取並關閉
+    selectCustomDpDate(todayStr);
+}
 
 // ========================================================
 // 程式進入點 (確保最後執行)
