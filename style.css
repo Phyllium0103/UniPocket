@@ -6,12 +6,13 @@
   -webkit-tap-highlight-color: transparent; 
 }
 
-body { 
+html, body { 
   background-color: var(--bg); 
   color: var(--text); 
   padding: env(safe-area-inset-top, 10px) 8px calc(env(safe-area-inset-bottom, 10px) + 64px) 8px; 
   transition: background-color 0.2s, color 0.2s; 
   user-select: none; 
+  overscroll-behavior-y: none;
 }
 
 /* 👇 新增這段，讓所有輸入框恢復可選取狀態 👇 */
@@ -172,6 +173,12 @@ input[type="text"], input[type="email"], input[type="password"], input[type="num
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
   width: 100%;
 }
+/* 新增針對 textarea 的設定 */
+textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 40px;
+}
 input:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--today-header-bg); /* 聚焦時有符合主題的發光感 */
@@ -289,10 +296,14 @@ input:focus, textarea:focus {
 .deadline-item:last-child { border-bottom: none; }
 
 /* ================== Timetable ================== */
-/* ================== Timetable ================== */
 .timetable-container { 
   width: 100%; 
-  max-height: 68vh; /* 啟用內部滾動，確保 sticky 正常運作 */
+  
+  /* 👇 1. 將高度設為 auto，外框就會「剛好」貼合課表內容，隨之變長變短 */
+  height: auto; 
+  /* 👇 2. 保留一個最大高度，避免在螢幕特別小的手機上撐破畫面，超出時依然可以滑動 */
+  max-height: 85vh; 
+  
   overflow-x: auto; 
   overflow-y: auto; 
   background: var(--card-bg); 
@@ -317,6 +328,8 @@ th, td {
   text-align: center; 
   vertical-align: top; 
 }
+
+
 th { 
   background: var(--table-th-bg); 
   font-size: 0.72rem; 
@@ -341,7 +354,7 @@ th.today-header {
   position: sticky;
   left: 0;
   z-index: 40;
-  width: 68px; 
+  width: 48px; 
   background: var(--card-bg); 
   font-size: 0.62rem; 
   font-weight: 600; 
@@ -432,6 +445,8 @@ thead .col-time {
 }
 
 .tutoring-float-card { 
+  word-break: break-all;
+  min-width: 0;
   position: absolute; 
   left: 2px; 
   right: 2px; 
@@ -454,11 +469,21 @@ thead .col-time {
   box-shadow: 0 1px 2px rgba(0,0,0,0.06); 
 }
 
+.tutoring-float-card .item-title,
+.tutoring-float-card .item-sub {
+  white-space: normal;
+  max-width: 100%;
+}
+
 .tutoring-float-card.is-override-temp { 
   border: 2px solid var(--primary); 
   border-radius: 6px; 
   box-shadow: 0 3px 8px rgba(0,0,0,0.15), inset 0 0 0 1px var(--card-bg); 
   justify-content: center; 
+}
+.tutoring-float-card .item-title {
+  /* 確保即使寬度極窄也不會破壞排版 */
+  max-width: 100%;
 }
 
 .evening-row td, .noon-row td { 
@@ -488,6 +513,7 @@ thead .col-time {
   display: flex; 
   flex-direction: column; 
   justify-content: center; 
+  position: relative;
 }
 
 .evening-card.is-tutoring, .evening-card.is-work { 
@@ -522,21 +548,25 @@ thead .col-time {
 .fab-container {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
-  right: 16px; /* 恢復靠右 */
+  right: 16px; /* 💡 維持靠右 */
   z-index: 80;
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* 恢復靠右 */
+  align-items: flex-end; /* 💡 確保選單與按鈕都靠右對齊 */
+  pointer-events: none; 
+}
+.fab-button, .fab-item {
+  pointer-events: auto; 
 }
 .fab-menu {
   display: flex;
   flex-direction: column;
-  align-items: flex-end; /* 恢復靠右 */
+  align-items: flex-end; /* 💡 子選項靠右對齊 */
   gap: 10px;
   margin-bottom: 12px;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(20px);
+  transform: translateY(15px); /* 短距離平滑浮出，不改變大小 */
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .fab-menu.active {
@@ -562,18 +592,45 @@ thead .col-time {
   height: 54px;
   border-radius: 50%;
   background: var(--primary);
-  color: #ffffff;
+  color: transparent; /* 💡 隱藏原本有偏移問題的文字 '+' */
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 1.8rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.25);
   cursor: pointer;
   border: none;
+  position: relative; /* 💡 給偽元素作為絕對定位的基準 */
   transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s;
 }
-.fab-button.active { transform: rotate(45deg); }
 
+/* 💡 使用 CSS 繪製絕對置中的橫線與直線 */
+.fab-button::before,
+.fab-button::after {
+  content: '';
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 2px; /* 讓十字邊緣稍微圓潤，質感更好 */
+  /* 確保線條 100% 完美居中 */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* 橫線 */
+.fab-button::before {
+  width: 24px;
+  height: 2px;
+}
+
+/* 直線 */
+.fab-button::after {
+  width: 2px;
+  height: 24px;
+}
+
+.fab-button.active { 
+  transform: rotate(45deg); /* 原地旋轉45度變成完美的 X */
+}
 /* ================== Mobile Bottom Tab ================== */
 .mobile-tab-bar { 
   position: fixed; 
@@ -582,7 +639,7 @@ thead .col-time {
   width: 100%; 
   height: calc(env(safe-area-inset-bottom, 0px) + 52px); 
   padding-bottom: env(safe-area-inset-bottom, 0px); 
-  background: var(--card-bg); 
+  background: var(--bg); 
   border-top: 1px solid var(--border); 
   display: flex; 
   justify-content: space-around; 
@@ -764,8 +821,22 @@ thead .col-time {
 .student-stat-row { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px; }
 
 /* ================== Data Tables ================== */
-.billing-table, .finance-table { width: 100%; border-collapse: collapse; margin-top: 8px;}
+.billing-table, .finance-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 8px;
+  table-layout: auto; /* 加入這行，讓表格根據內容自動撐開寬度 */
+}
 .billing-table th, .billing-table td, .finance-table th, .finance-table td { padding: 5px 6px; border: 1px solid var(--border); font-size: 0.75rem; }
+
+.billing-table th:first-child, .billing-table td:first-child,
+.finance-table th:first-child, .finance-table td:first-child,
+.billing-table th:last-child, .billing-table td:last-child,
+.finance-table th:last-child, .finance-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
 
 .tag-paid { background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
 .tag-unpaid { background: #fee2e2; color: #b91c1c; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
@@ -802,6 +873,34 @@ thead .col-time {
   position: relative; 
   border: 1px solid var(--border); 
 }
+
+/* 在 .modal-content 定義的下方加入 */
+.modal.modal-center {
+  align-items: center;
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  /* 為了防止手機版預設從底部滑上來，針對 modal-center 做排除 */
+  .modal:not(.modal-center) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal.modal-center .modal-content {
+    margin: auto;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 320px;
+    border-bottom: 1px solid var(--border);
+    animation: popInCenter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+}
+
+@keyframes popInCenter {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .modal-header { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
 
 .form-group { margin-bottom: 8px; }
@@ -817,7 +916,23 @@ thead .col-time {
   outline: none; 
 }
 .form-row { display: flex; gap: 6px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+.modal-actions { 
+  display: flex; 
+  justify-content: space-between; 
+  gap: 10px; 
+  margin-top: 20px; 
+  margin-bottom: 15px; /* 💡 往上推一點，不要碰到底部邊緣 */
+}
+.modal-actions button {
+  flex: 1; 
+  padding: 10px 8px; /* 💡 微調縮小按鈕高度 */
+  font-size: 0.9rem; /* 💡 字體維持適中 */
+  border-radius: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 !important; 
+}
 
 /* Multi-select Grid for Courses */
 .period-select-grid {

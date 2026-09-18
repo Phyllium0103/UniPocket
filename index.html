@@ -85,7 +85,6 @@
     </div>
 
     <div class="week-nav-btns" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 12px;">
-      <div class="week-nav-btns" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 12px;">
       <div class="week-nav-group">
         <button onclick="changeWeek(-1)">◀ 上週</button>
         <button class="today" id="btn-current-week" onclick="resetCurrentWeek()">本週</button>
@@ -95,16 +94,16 @@
 
     <!-- 調整 3：徹底移除了原本的 <div class="schedule-footer-banner"> -->
 
-    <!-- 懸浮按鈕 FAB -->
-    <div class="fab-container" id="main-fab-container">
-      <div class="fab-menu" id="fab-menu">
-        <div class="fab-item" onclick="toggleFab(); openOverrideModal()">臨時調課</div>
-        <div class="fab-item" onclick="toggleFab(); openTempEventModal()">臨時事件</div>
-        <div class="fab-item" onclick="toggleFab(); openTutoringModal()">家教</div>
-        <div class="fab-item" onclick="toggleFab(); openWorkModal()">工作</div>
-        <div class="fab-item" onclick="toggleFab(); openMultiSchoolModal()">課程</div>
+    <!-- 懸浮按鈕 FAB (課表) -->
+    <div class="fab-container" id="schedule-fab-container">
+      <div class="fab-menu" id="schedule-fab-menu">
+        <div class="fab-item" onclick="toggleFabMenu('schedule'); openOverrideModal()">臨時調課</div>
+        <div class="fab-item" onclick="toggleFabMenu('schedule'); openTempEventModal()">臨時事件</div>
+        <div class="fab-item" onclick="toggleFabMenu('schedule'); openTutoringModal()">家教</div>
+        <div class="fab-item" onclick="toggleFabMenu('schedule'); openWorkModal()">工作</div>
+        <div class="fab-item" onclick="toggleFabMenu('schedule'); openMultiSchoolModal()">課程</div>
       </div>
-      <button class="fab-button" id="fab-button" onclick="toggleFab()">+</button>
+      <button class="fab-button" id="schedule-fab-button" onclick="toggleFabMenu('schedule')">+</button>
     </div>
   </main>
 
@@ -139,15 +138,21 @@
       <table class="billing-table">
         <thead>
           <tr>
-            <th>日期</th><th id="th-billing-target">學生</th><th>時數</th><th>時薪</th><th>應收</th><th>狀態</th><th>備註</th><th>操作</th>
+            <th>日期</th><th id="th-billing-target">學生</th><th>應收金額</th><th>狀態</th><th>備註</th><th>操作</th>
           </tr>
         </thead>
         <tbody id="billing-body"></tbody>
       </table>
     </div>
-    <button class="fab-button" style="position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 70px); right:16px; z-index:80; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding-bottom: 4px;" onclick="openCurrentBillingModal()">+</button>
+    <!-- 懸浮按鈕 FAB (帳務) -->
+    <div class="fab-container" id="billing-fab-container">
+      <div class="fab-menu" id="billing-fab-menu">
+        <div class="fab-item" onclick="toggleFabMenu('billing'); switchBillingType('work'); openWorkBillingModal();">工作</div>
+        <div class="fab-item" onclick="toggleFabMenu('billing'); switchBillingType('tutoring'); openBillingModal();">家教</div>
+      </div>
+      <button class="fab-button" id="billing-fab-button" onclick="toggleFabMenu('billing')">+</button>
+    </div>
   </section>
-
   <!-- ================= 個人記帳 ================= -->
   <section id="finance-view" class="personal-finance-panel">
     <div class="month-filter-bar">
@@ -177,13 +182,23 @@
       <table class="finance-table">
         <thead>
           <tr>
-            <th>日期</th><th>類型</th><th>主類別 / 子類別</th><th>金額</th><th>備註</th><th>操作</th>
+            <th>日期 / 類型</th><th>主類別 / 子類別</th><th>金額</th><th>備註</th><th>操作</th>
           </tr>
         </thead>
         <tbody id="finance-body"></tbody>
       </table>
     </div>
-    <button class="fab-button" style="position:fixed; bottom:calc(env(safe-area-inset-bottom, 0px) + 70px); right:16px; z-index:80; box-shadow: 0 4px 12px rgba(0,0,0,0.3); padding-bottom: 4px;" onclick="openFinanceModal()">+</button>
+    <!-- 懸浮按鈕 FAB (記帳) -->
+    <div class="fab-container" id="finance-fab-container">
+      <div class="fab-menu" id="finance-fab-menu">
+        <div class="fab-item" onclick="toggleFabMenu('finance'); openFinanceModalWithType('payable')">應付</div>
+        <div class="fab-item" onclick="toggleFabMenu('finance'); openFinanceModalWithType('receivable')">應收</div>
+        <div class="fab-item" onclick="toggleFabMenu('finance'); openFinanceModalWithType('transfer')">轉帳</div>
+        <div class="fab-item" onclick="toggleFabMenu('finance'); openFinanceModalWithType('income')">收入</div>
+        <div class="fab-item" onclick="toggleFabMenu('finance'); openFinanceModalWithType('expense')">支出</div>
+      </div>
+      <button class="fab-button" id="finance-fab-button" onclick="toggleFabMenu('finance')">+</button>
+    </div>
   </section>
   <!-- ================= 好友連線 ================= -->
   <section id="friends-view" class="friends-panel">
@@ -193,7 +208,7 @@
     <div class="search-bar-wrapper" style="margin-bottom:16px;">
       <span style="margin-left: 8px; font-size: 1.1rem; opacity: 0.5;">🔍</span>
       <input type="text" id="friend-search-input" placeholder="輸入 Email 或暱稱搜尋好友...">
-      <button class="btn search-btn" onclick="searchFriends()">搜尋</button>
+      <button class="btn btn-secondary search-btn" onclick="searchFriends()">搜尋</button>
     </div>
     <div id="friend-search-result" style="margin-bottom:12px; font-size:0.8rem; font-weight:bold; color:var(--primary);"></div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
@@ -299,19 +314,18 @@
       <div class="mobile-tab-icon">📖</div><div>課表</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-billing" onclick="switchView('billing')">
-      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div><div id="nav-billing-text">打工帳務</div>
+      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div><div id="nav-billing-text">帳務</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-finance" onclick="switchView('finance')">
-      <div class="mobile-tab-icon">💳</div><div>個人記帳</div>
+      <div class="mobile-tab-icon">💳</div><div>記帳</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-friends" onclick="switchView('friends')">
-      <div class="mobile-tab-icon">🤝<span class="badge" id="tab-friends-badge">0</span></div><div>好友連線</div>
+      <div class="mobile-tab-icon">🤝<span class="badge" id="tab-friends-badge">0</span></div><div>連線</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-settings" onclick="switchView('settings')">
       <div class="mobile-tab-icon">⚙️</div><div>設定</div>
     </div>
   </nav>
-
   <!-- ================= 所有 Modals ================= -->
   <!-- 認證與暱稱設定 -->
   <div class="modal" id="nickname-modal">
@@ -898,7 +912,7 @@
             <span id="credit-sem-title" style="font-size:1.4rem; font-weight:normal; color:var(--text);">大一上</span>
             <span style="font-size:0.8rem; color:var(--text-muted); margin-top:4px;">▼</span>
           </div>
-          <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text); margin-left:8px;" onclick="openAddSemesterModal()">+</button>
+          <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text); margin-left:8px;" onclick="openAddSemesterModal()">➕</button>
           <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text);" onclick="openGradeScaleModal()">❓</button>
           <button class="btn btn-secondary" style="padding: 2px 8px; border-radius: 12px; font-size: 1rem; background: var(--table-th-bg); color: var(--text);" onclick="openCreditSettings()">⚙️</button>
         </div>
@@ -947,7 +961,7 @@
       
       <div style="text-align: center; margin-bottom: 20px;">
         <label style="font-size: 0.75rem; color: var(--text-muted);">最終成績</label>
-        <input type="text" id="score-modal-input" style="display: block; margin: 5px auto; font-size: 2.5rem; font-weight: 800; text-align: center; width: 120px; border: none; border-bottom: 2px solid var(--primary); background: transparent; color: var(--text); outline: none;">
+        <input type="number" id="score-modal-input" min="0" max="100" pattern="[0-9]*" inputmode="numeric" oninput="if(this.value !== '') { window.currentSpecialScore = null; window.updateSpecialScoreUI && window.updateSpecialScoreUI(); }" style="display: block; margin: 5px auto; font-size: 2.5rem; font-weight: 800; text-align: center; width: 120px; border: none; border-bottom: 2px solid var(--primary); background: transparent; color: var(--text); outline: none;">
       </div>
 
       <div style="text-align:center; margin-bottom: 15px;">
@@ -1097,5 +1111,27 @@
       });
     }
   </script>
+
+  <div class="modal modal-center" id="custom-confirm-modal" style="z-index: 100000;">
+    <div class="modal-content" style="max-width: 320px; text-align: center;">
+      <div class="modal-header" id="confirm-modal-title" style="border:none; font-size:1.1rem; color:var(--text);">確認操作</div>
+      <div id="confirm-modal-message" style="margin-bottom: 20px; font-size:0.9rem; color:var(--text-muted);">確定要執行此操作嗎？</div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('custom-confirm-modal')">取消</button>
+        <button class="btn btn-danger" id="confirm-btn-ok">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="overlap-selection-modal">
+  <div class="modal-content">
+    <div class="modal-header" id="overlap-selection-title">多筆行程時間重疊</div>
+    <div id="overlap-selection-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column;"></div>
+    <div class="modal-actions" style="margin-top: 15px;">
+      <button class="btn btn-secondary" onclick="closeModal('overlap-selection-modal')">關閉</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

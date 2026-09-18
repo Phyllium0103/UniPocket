@@ -43,6 +43,13 @@ let currentEditingDeadlineIdx = null;
 // [修復] Toast 通知計時器覆蓋問題
 let toastTimeout = null;
 
+document.addEventListener('input', function(e) {
+    if(e.target.tagName.toLowerCase() === 'textarea') {
+        e.target.style.height = 'auto';
+        e.target.style.height = (e.target.scrollHeight) + 'px';
+    }
+});
+
 // 初始化 Supabase
 if (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith("http") && SUPABASE_ANON_KEY.length > 5) {
     supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -183,6 +190,19 @@ let state = createDefaultState();
 // ========================================================
 // 工具與資料函數
 // ========================================================
+
+window.showConfirm = function(msg, onConfirm, okText="確定", isDanger=true) {
+    document.getElementById("confirm-modal-message").innerText = msg;
+    const okBtn = document.getElementById("confirm-btn-ok");
+    okBtn.innerText = okText;
+    okBtn.className = isDanger ? "btn btn-danger" : "btn btn-warning";
+    okBtn.onclick = () => {
+        closeModal("custom-confirm-modal");
+        if(onConfirm) onConfirm();
+    };
+    document.getElementById("custom-confirm-modal").classList.add("active");
+};
+
 function getTargetSchedule() {
     let targetState = (isViewingFriend && friendState) ? friendState : state;
     if (!targetState.schedules || targetState.schedules.length === 0) {
@@ -226,10 +246,23 @@ function timeToPixelOffset(timeMins, periods, hasNoon = false) {
         const pStart = timeToMinutes(periods[i].start);
         const pEnd = timeToMinutes(periods[i].end);
         let currentNoonOffset = (hasNoon && periods[i].id >= 5) ? CELL_HEIGHT : 0;
-        if (timeMins >= pStart && timeMins <= pEnd) return i * CELL_HEIGHT + currentNoonOffset + ((timeMins - pStart) / (pEnd - pStart || 1)) * CELL_HEIGHT;
+        
+        // 如果時間落在節次內
+        if (timeMins >= pStart && timeMins <= pEnd) {
+            return i * CELL_HEIGHT + currentNoonOffset + ((timeMins - pStart) / (pEnd - pStart || 1)) * CELL_HEIGHT;
+        }
+        
+        // 如果時間落在兩堂課的「空檔/中午」之間 (按比例計算像素)
         if (i < periods.length - 1) {
             const nextStart = timeToMinutes(periods[i + 1].start);
-            if (timeMins > pEnd && timeMins < nextStart) return (i + 1) * CELL_HEIGHT + ((hasNoon && periods[i + 1].id >= 5) ? CELL_HEIGHT : 0);
+            if (timeMins > pEnd && timeMins < nextStart) {
+                let gapStartPx = (i + 1) * CELL_HEIGHT + currentNoonOffset;
+                let nextNoonOffset = (hasNoon && periods[i + 1].id >= 5) ? CELL_HEIGHT : 0;
+                let gapEndPx = (i + 1) * CELL_HEIGHT + nextNoonOffset;
+                
+                let ratio = (nextStart === pEnd) ? 0 : (timeMins - pEnd) / (nextStart - pEnd);
+                return gapStartPx + ratio * (gapEndPx - gapStartPx);
+            }
         }
     }
     return periods.length * CELL_HEIGHT + (hasNoon ? CELL_HEIGHT : 0);
@@ -432,10 +465,7 @@ function renderFriendsView() {
                         <span class="friend-name">${escapeHtml(friend.nickname || friend.email)}</span>
                         <span class="friend-email">${friend.email || "無Email"}</span>
                     </div>
-                    <button class="btn" style="padding:4px 8px; font-size:0.7rem;" 
-                            onclick="viewFriendSchedule('${friend.id}', '${escapeJS(friend.nickname || friend.email)}')">
-                        查看課表
-                    </button>
+                    <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem; border-radius:12px;" onclick="viewFriendSchedule('${friend.id}', '${escapeJS(friend.nickname || friend.email)}')">查看課表</button>
                 </div>`;
         }
     });
@@ -766,7 +796,7 @@ function renderNotifications() {
                            <span style="font-size:0.75rem; font-weight:bold; color:var(--primary);">📍 位於：${escapeHtml(ctxStr)}</span>
                            <div style="margin-top:6px; text-align:right;">
                              <button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem; margin-right:6px;" onclick="deleteMessage('${m.id}')">刪除</button>
-                             <button class="btn btn-warning" style="padding:2px 6px; font-size:0.7rem; margin-right:6px;" onclick="switchView('schedule'); readStickyNote('${m.id}')">前往查看</button>
+                             <button class="btn btn-secondary" style="padding:4px 12px; font-size:0.75rem; border-radius:12px; margin-right:6px;" onclick="switchView('schedule'); readStickyNote('${m.id}')">前往查看</button>
                              ${isUnread ? `<button class="btn btn-secondary" style="padding:2px 6px; font-size:0.7rem;" onclick="markNoteRead('${m.id}')">標示為已讀</button>` : ''}
                            </div>`;
         }
@@ -816,15 +846,21 @@ async function markNoteRead(msgId) {
 }
 
 // [修復] 回傳 boolean 狀態以利判斷是否成功刪除
-async function deleteMessage(msgId) { 
-    if (!confirm("確定永久刪除此通知與相關留言？")) return false;
-    userMessages = userMessages.filter(m => m.id !== msgId); 
-    renderNotifications(); 
-    if(typeof renderSchedule === 'function') renderSchedule();
-    try { await supabaseClient.from('user_messages').delete().eq('id', msgId); fetchMessages(); } 
-    catch (e) { console.error(e); }
-    return true;
-}
+window.deleteMessage = function(msgId) { 
+    showConfirm("確定永久刪除此通知與相關留言？", async () => {
+        userMessages = userMessages.filter(m => m.id !== msgId); 
+        renderNotifications(); 
+        if(typeof renderSchedule === 'function') renderSchedule();
+        try { await supabaseClient.from('user_messages').delete().eq('id', msgId); fetchMessages(); } 
+        catch (e) { console.error(e); }
+        
+        // 若在閱讀視窗內刪除，連同視窗一起關閉
+        if (currentReadingNoteId === msgId) {
+            closeModal('read-note-modal');
+            currentReadingNoteId = null;
+        }
+    });
+};
 
 function openAuthModal() { 
     document.getElementById("auth-msg").innerText = ""; 
@@ -871,20 +907,21 @@ async function handleAuthRegister() {
 }
 
 async function handleAuthLogout() {
-    if (!confirm("確定登出？")) return;
-    currentUser = null; myProfile = null; connectionsList = []; userMessages = [];
-    isViewingFriend = false; friendState = null; viewingFriendId = null;
-    state = createDefaultState();
-    localStorage.removeItem("local_schedule_v2_data");
-    updateUserUI(false);
-    updateSettingsUI();
-    if(typeof renderSchedule === 'function') renderSchedule(); 
-    if(typeof renderBillings === 'function') renderBillings(); 
-    if(typeof renderFinances === 'function') renderFinances(); 
-    renderFriendsView(); renderNotifications();
-    switchView('schedule');
-    showToast("已成功登出");
-    try { await supabaseClient.auth.signOut(); } catch (err) { console.error("Supabase signOut failed:", err); }
+    showConfirm("確定登出？", async () => {
+        currentUser = null; myProfile = null; connectionsList = []; userMessages = [];
+        isViewingFriend = false; friendState = null; viewingFriendId = null;
+        state = createDefaultState();
+        localStorage.removeItem("local_schedule_v2_data");
+        updateUserUI(false);
+        updateSettingsUI();
+        if(typeof renderSchedule === 'function') renderSchedule(); 
+        if(typeof renderBillings === 'function') renderBillings(); 
+        if(typeof renderFinances === 'function') renderFinances(); 
+        renderFriendsView(); renderNotifications();
+        switchView('schedule');
+        showToast("已成功登出");
+        try { await supabaseClient.auth.signOut(); } catch (err) { console.error("Supabase signOut failed:", err); }
+    });
 }
 
 async function saveToStorage() {
@@ -976,18 +1013,43 @@ async function pullCloudData() {
 // ========================================================
 // 設定與介面切換系統
 // ========================================================
-function toggleFab() {
+// ================== 全新 FAB 控制邏輯 ==================
+window.toggleFabMenu = function(type) {
     triggerHaptic(15);
-    const menu = document.getElementById('fab-menu');
-    const btn = document.getElementById('fab-button');
+    const menu = document.getElementById(`${type}-fab-menu`);
+    const btn = document.getElementById(`${type}-fab-button`);
+    if (!menu || !btn) return;
+    
+    // 如果是展開狀態，就關閉
     if (menu.classList.contains('active')) {
         menu.classList.remove('active');
         btn.classList.remove('active');
     } else {
+        // 先把其他頁面的選單關閉
+        closeAllFabs();
         menu.classList.add('active');
         btn.classList.add('active');
     }
-}
+};
+
+window.closeAllFabs = function() {
+    ['schedule', 'billing', 'finance'].forEach(type => {
+        const menu = document.getElementById(`${type}-fab-menu`);
+        const btn = document.getElementById(`${type}-fab-button`);
+        if (menu) menu.classList.remove('active');
+        if (btn) btn.classList.remove('active');
+    });
+};
+
+// 記帳：帶入預設類型直接開啟
+window.openFinanceModalWithType = function(type) {
+    openFinanceModal();
+    const typeSelect = document.getElementById('fin-type');
+    if (typeSelect) {
+        typeSelect.value = type;
+        onFinanceTypeChange(); // 觸發類別連動更新
+    }
+};
 
 function updateSettingsUI() {
     const s24 = document.getElementById("toggle-24h");
@@ -1048,6 +1110,7 @@ function onTextAlignChange(val) {
 }
 
 function switchView(view) {
+    closeAllFabs(); // 💡 切換頁面時，自動收起所有展開的 + 號選單
     triggerHaptic(20);
     if (view !== 'schedule' && isViewingFriend) {
         exitFriendView();
@@ -1068,7 +1131,6 @@ function switchView(view) {
     if (view === "friends") { fetchConnections(); fetchMessages(); }
     if (view === "settings") updateSettingsUI();
 }
-
 function initThemeDropdown() { 
     const select = document.getElementById("theme-style-select"); 
     if (!select) return; 
@@ -1239,37 +1301,36 @@ window.saveCourseNote = function(courseKey) {
 };
 
 window.deleteCourseNote = function(courseKey, noteId) {
-    if(!confirm("確定刪除此筆記？")) return;
-    triggerHaptic(15);
-    const sch = getActiveSchedule();
-    const firstUnderscore = courseKey.indexOf("_");
-    const day = courseKey.substring(0, firstUnderscore);
-    const periodId = courseKey.substring(firstUnderscore + 1);
-    let courseObj = getCourseObjForEdit(day, periodId);
-    if (!courseObj) return;
-    
-    courseObj.notes = courseObj.notes.filter(n => n.id !== noteId);
-    
-    // 如果開啟同步，更新同步刪除至同名課程
-    if (state.syncCourseName !== false && courseObj.name) {
-        Object.keys(sch.courses || {}).forEach(k => {
-            if (sch.courses[k].name === courseObj.name) sch.courses[k].notes = structuredClone(courseObj.notes);
-        });
-        (sch.customCourses || []).forEach(c => {
-            if (c.name === courseObj.name) c.notes = structuredClone(courseObj.notes);
-        });
-    }
-    
-    saveToStorage();
-    
-    const scrollPos = document.querySelector('#view-detail-modal .modal-content').scrollTop;
-    if (currentViewingOverrideId) {
-        const ovr = (sch.overrides || []).find(o => o.id === currentViewingOverrideId);
-        openViewDetailModal("override", { ovr }, 'notes');
-    } else {
-        openViewDetailModal("school", { day, periodId, course: courseObj }, 'notes');
-    }
-    document.querySelector('#view-detail-modal .modal-content').scrollTop = scrollPos;
+    showConfirm("確定刪除此筆記？", () => {
+        triggerHaptic(15);
+        const sch = getActiveSchedule();
+        const firstUnderscore = courseKey.indexOf("_");
+        const day = courseKey.substring(0, firstUnderscore);
+        const periodId = courseKey.substring(firstUnderscore + 1);
+        let courseObj = getCourseObjForEdit(day, periodId);
+        if (!courseObj) return;
+        
+        courseObj.notes = courseObj.notes.filter(n => n.id !== noteId);
+        
+        if (state.syncCourseName !== false && courseObj.name) {
+            Object.keys(sch.courses || {}).forEach(k => {
+                if (sch.courses[k].name === courseObj.name) sch.courses[k].notes = structuredClone(courseObj.notes);
+            });
+            (sch.customCourses || []).forEach(c => {
+                if (c.name === courseObj.name) c.notes = structuredClone(courseObj.notes);
+            });
+        }
+        saveToStorage();
+        
+        const scrollPos = document.querySelector('#view-detail-modal .modal-content').scrollTop;
+        if (currentViewingOverrideId) {
+            const ovr = (sch.overrides || []).find(o => o.id === currentViewingOverrideId);
+            openViewDetailModal("override", { ovr }, 'notes');
+        } else {
+            openViewDetailModal("school", { day, periodId, course: courseObj }, 'notes');
+        }
+        document.querySelector('#view-detail-modal .modal-content').scrollTop = scrollPos;
+    });
 };
 
 window.editCourseNote = function(courseKey, noteId) {
@@ -1420,36 +1481,36 @@ window.addCourseDeadline = function(courseKey) {
 };
 
 window.deleteCourseDeadline = function(courseKey, dlId) {
-    if (!confirm("確定刪除此日程？")) return;
-    triggerHaptic(15);
-    const sch = getActiveSchedule();
-    const firstUnderscore = courseKey.indexOf("_");
-    const day = courseKey.substring(0, firstUnderscore);
-    const periodId = courseKey.substring(firstUnderscore + 1);
-    let courseObj = getCourseObjForEdit(day, periodId);
-    if (!courseObj) return;
+    showConfirm("確定刪除此日程？", () => {
+        triggerHaptic(15);
+        const sch = getActiveSchedule();
+        const firstUnderscore = courseKey.indexOf("_");
+        const day = courseKey.substring(0, firstUnderscore);
+        const periodId = courseKey.substring(firstUnderscore + 1);
+        let courseObj = getCourseObjForEdit(day, periodId);
+        if (!courseObj) return;
 
-    courseObj.deadlines = (courseObj.deadlines || []).filter(d => d.id !== dlId);
+        courseObj.deadlines = (courseObj.deadlines || []).filter(d => d.id !== dlId);
 
-    if (state.syncCourseName !== false && courseObj.name) {
-        Object.keys(sch.courses || {}).forEach(k => {
-            if (sch.courses[k].name === courseObj.name) sch.courses[k].deadlines = structuredClone(courseObj.deadlines);
-        });
-        (sch.customCourses || []).forEach(c => {
-            if (c.name === courseObj.name) c.deadlines = structuredClone(courseObj.deadlines);
-        });
-    }
-
-    saveToStorage();
-    
-    const scrollPos = document.querySelector('#view-detail-modal .modal-content').scrollTop;
-    if (currentViewingOverrideId) {
-        const ovr = (sch.overrides || []).find(o => o.id === currentViewingOverrideId);
-        openViewDetailModal("override", { ovr }, 'notes');
-    } else {
-        openViewDetailModal("school", { day, periodId, course: courseObj }, 'notes');
-    }
-    document.querySelector('#view-detail-modal .modal-content').scrollTop = scrollPos;
+        if (state.syncCourseName !== false && courseObj.name) {
+            Object.keys(sch.courses || {}).forEach(k => {
+                if (sch.courses[k].name === courseObj.name) sch.courses[k].deadlines = structuredClone(courseObj.deadlines);
+            });
+            (sch.customCourses || []).forEach(c => {
+                if (c.name === courseObj.name) c.deadlines = structuredClone(courseObj.deadlines);
+            });
+        }
+        saveToStorage();
+        
+        const scrollPos = document.querySelector('#view-detail-modal .modal-content').scrollTop;
+        if (currentViewingOverrideId) {
+            const ovr = (sch.overrides || []).find(o => o.id === currentViewingOverrideId);
+            openViewDetailModal("override", { ovr }, 'notes');
+        } else {
+            openViewDetailModal("school", { day, periodId, course: courseObj }, 'notes');
+        }
+        document.querySelector('#view-detail-modal .modal-content').scrollTop = scrollPos;
+    });
 };
 
 function onThemeStyleSelect(styleId) { 
@@ -1560,14 +1621,14 @@ function confirmCreateSchedule() {
 
 function deleteSchedule(schId) { 
     if (state.schedules.length <= 1) { showToast("必須保留至少一個課表！", "error"); return; }
-    if (confirm("確定刪除此課表？")) { 
+    showConfirm("確定刪除此課表？", () => { 
         state.schedules = state.schedules.filter((s) => s.id !== schId); 
         if (state.activeScheduleId === schId) state.activeScheduleId = state.schedules[0].id; 
         saveToStorage(); 
         if(typeof updatePresetDropdowns === 'function') updatePresetDropdowns(); 
         if(typeof renderSchedule === 'function') renderSchedule(); 
         openScheduleSelectModal(); 
-    } 
+    }); 
 }
 
 function openScheduleConfigModal() { 
@@ -1630,12 +1691,12 @@ function savePeriodConfig() {
 }
 
 function resetPeriodsToDefault() { 
-    if (confirm("恢復預設節次？")) { 
+    showConfirm("恢復預設節次？", () => { 
         getActiveSchedule().periods = structuredClone(initialDefaultPeriods); 
         saveToStorage(); 
         openPeriodConfigModal(); 
         if(typeof renderSchedule === 'function') renderSchedule(); 
-    } 
+    }); 
 }
 
 // ========================================================
@@ -1880,8 +1941,10 @@ function getDisplayHtml(item, type, weekKey, isMasked, seg) {
             badge = `<span class="memo-badge">📌</span>`;
         }
         let timeSub = "";
-        // ✅ [修復2] 判斷並顯示自訂時間網格的時間
-        if (seg && (seg.renderStart || seg.startTime)) {
+        // 隱藏一般課程本來不會顯示的時間（避免跟 Custom 衝突）
+        if (item.course && item.course.isRegularSchool) {
+             /* 不做任何顯示 */
+        } else if (seg && (seg.renderStart || seg.startTime)) {
             const st = seg.renderStart || seg.startTime;
             const et = seg.renderEnd || seg.endTime;
             timeSub = `<div class="item-sub">${escapeHtml(st)} ~ ${escapeHtml(et)}</div>`;
@@ -1901,6 +1964,103 @@ function getDisplayHtml(item, type, weekKey, isMasked, seg) {
     }
 }
 
+window.calculateOverlaps = function(gridArray) {
+    gridArray.forEach(item => {
+        // 💡 加入 overlapStart 與 overlapEnd 專供碰撞演算法使用
+        item.sm = timeToMinutes(item.overlapStart || item.renderStart || item.startTime);
+        let em = timeToMinutes(item.overlapEnd || item.renderEnd || item.endTime);
+        if (item.sm > em) em = 24 * 60; 
+        item.em = em;
+    });
+    
+    gridArray.sort((a, b) => a.sm - b.sm || b.em - a.em);
+    
+    let columns = [];
+    let lastEventEnding = null;
+    
+    const packEvents = (cols) => {
+        const numCols = cols.length;
+        const allInCluster = cols.flatMap(c => c);
+        cols.forEach((col, colIdx) => {
+            col.forEach(ev => {
+                ev.colSpan = 1;
+                for (let i = colIdx + 1; i < numCols; i++) {
+                    if (cols[i].some(e => e.sm < ev.em && e.em > ev.sm)) break;
+                    ev.colSpan++;
+                }
+                ev.widthPct = (ev.colSpan / numCols) * 100;
+                ev.leftPct = (colIdx / numCols) * 100;
+                
+                const getEm = (item) => Math.max(item.em, item.sm + 1);
+                ev.overlapGroup = allInCluster.filter(e => Math.max(ev.sm, e.sm) < Math.min(getEm(ev), getEm(e)));
+            });
+        });
+    };
+
+    gridArray.forEach(ev => {
+        if (lastEventEnding !== null && ev.sm >= lastEventEnding) {
+            packEvents(columns);
+            columns = [];
+            lastEventEnding = null;
+        }
+        let placed = false;
+        for (let col of columns) {
+            if (!col.some(e => e.sm < ev.em && e.em > ev.sm)) {
+                col.push(ev);
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) { columns.push([ev]); }
+        if (lastEventEnding === null || ev.em > lastEventEnding) { lastEventEnding = ev.em; }
+    });
+    if (columns.length > 0) packEvents(columns);
+};
+
+// 呼叫重疊選擇 Modal
+window.openOverlapSelectionModal = function(group) {
+    triggerHaptic(15);
+    const listEl = document.getElementById("overlap-selection-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    
+    document.getElementById("overlap-selection-title").innerText = `${group.length} 筆行程時間重疊`;
+    
+    group.forEach(item => {
+        const el = document.createElement("div");
+        el.className = "settings-item";
+        el.style.cssText = "border:1px solid var(--border); border-radius:8px; padding:10px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;";
+        
+        let name = "";
+        let sub = `${item.renderStart || item.startTime} ~ ${item.renderEnd || item.endTime}`;
+        
+        if (item.itemType === 'is-school') {
+            const cName = item.course ? item.course.name : (item.name || "未知課程");
+            name = `[課程] ${cName}`;
+        } else if (item.itemType === 'is-tutoring') {
+            name = `[家教] ${item.student}`;
+        } else if (item.itemType === 'is-work') {
+            name = `[工作] ${item.name}`;
+        } else if (item.itemType === 'is-override-temp') {
+            name = `[事件/調課] ${item.title}`;
+        }
+        
+        el.innerHTML = `
+            <div>
+                <div style="font-weight:bold; font-size:0.9rem; color:var(--text);">${escapeHtml(name)}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">${escapeHtml(sub)}</div>
+            </div>
+            <div style="color:var(--primary); font-weight:bold; font-size:0.8rem; background:var(--table-th-bg); padding:4px 8px; border-radius:12px;">查看 ➔</div>
+        `;
+        el.onclick = () => {
+            closeModal("overlap-selection-modal");
+            item.clickFn(item.id);
+        };
+        listEl.appendChild(el);
+    });
+    document.getElementById("overlap-selection-modal").classList.add("active");
+};
+
 function renderOriginalSchedule() {
     try {
         const sch = getActiveSchedule();
@@ -1914,7 +2074,7 @@ function renderOriginalSchedule() {
         document.getElementById("week-range-text").innerText = `${monday.getFullYear()} 年 ${formatShortDate(monday)} ~ ${formatShortDate(rangeEnd)}`;
         
         const tableEl = document.getElementById("schedule-table");
-        if (tableEl) tableEl.style.width = state.showTutoring ? "calc(68px + (100% - 68px) / 5 * 7)" : "100%";
+        if (tableEl) tableEl.style.width = state.showTutoring ? "calc(48px + (100% - 48px) / 5 * 7)" : "100%";
         
         const thead = document.getElementById("schedule-head"); 
         thead.innerHTML = ""; 
@@ -1952,7 +2112,6 @@ function renderOriginalSchedule() {
         const firstPeriodStartMins = periodsToRender.length > 0 ? timeToMinutes(periodsToRender[0].start) : 8 * 60;
         const lastPeriodEndMins = periodsToRender.length > 0 ? timeToMinutes(periodsToRender[periodsToRender.length - 1].end) : 17 * 60;
         
-        // 修正：限制調課只隱藏當週(以 targetDate 判斷) 的原課程
         const weekStart = new Date(monday);
         const weekEnd = new Date(monday);
         weekEnd.setDate(monday.getDate() + 6);
@@ -1966,8 +2125,11 @@ function renderOriginalSchedule() {
         const overriddenSourceIds = new Set(currentWeekOverrides.map((o) => o.sourceId));
         const overriddenCourseKeys = new Set(currentWeekOverrides.filter((o) => o.type === "school").map((o) => o.sourceKey));
 
+        const combinedGrid = Array.from({ length: maxDays + 1 }, () => []);
+        const morningGrid = Array.from({ length: maxDays + 1 }, () => []); 
         const daytimeGrid = Array.from({ length: maxDays + 1 }, () => []);
         const eveningGrid = Array.from({ length: maxDays + 1 }, () => []);
+        let hasMorningEvents = false; 
 
         for (let d = 1; d <= maxDays; d++) {
             const cellDateObj = new Date(monday); cellDateObj.setDate(monday.getDate() + (d - 1)); 
@@ -1980,21 +2142,50 @@ function renderOriginalSchedule() {
             const processEvent = (item, itemDay, itemDateStr, clickFn, getInnerHtml, defBgVar, defTextVar, itemType) => {
                 let sm = timeToMinutes(item.startTime); let em = timeToMinutes(item.endTime); let isCross = sm > em;
                 let matchesToday = itemDateStr ? (itemDateStr === dStr) : (Number(itemDay) === d);
-                let matchesNextDay = itemDateStr ? (itemDateStr === nextDStr) : (Number(itemDay) === nextD);
                 let matchesPrevDay = itemDateStr ? (itemDateStr === prevDStr) : (Number(itemDay) === prevD);
                 
-                if ((matchesToday && sm < lastPeriodEndMins && (isCross || em > firstPeriodStartMins)) || (matchesPrevDay && isCross && em > firstPeriodStartMins)) {
-                    let renderStart = (matchesPrevDay && isCross) ? "00:00" : item.startTime;
-                    let renderEnd = (matchesToday && isCross) ? "24:00" : item.endTime;
-                    daytimeGrid[d].push({ ...item, clickFn, getInnerHtml, defBgVar, defTextVar, itemType, renderStart, renderEnd });
+                let renderStart = null;
+                let renderEnd = null;
+
+                if (matchesToday) {
+                    renderStart = item.startTime;
+                    renderEnd = isCross ? "24:00" : item.endTime;
+                } else if (matchesPrevDay && isCross && em > 0) {
+                    renderStart = "00:00";
+                    renderEnd = item.endTime;
                 }
-                
-                if ((matchesToday && (isCross || em > lastPeriodEndMins)) || (matchesNextDay && sm < firstPeriodStartMins)) {
-                    let extendsFromDaytime = matchesToday && sm < lastPeriodEndMins;
-                    eveningGrid[d].push({ ...item, clickFn, getInnerHtml, defBgVar, defTextVar, itemType, extendsFromDaytime });
+
+                if (renderStart !== null && renderEnd !== null) {
+                    let rsm = timeToMinutes(renderStart);
+                    let rem = timeToMinutes(renderEnd);
+                    if (renderStart === "24:00") rsm = 24 * 60;
+                    if (renderEnd === "24:00") rem = 24 * 60;
+
+                    let overlapStart = renderStart;
+                    let overlapEnd = renderEnd;
+
+                    if (rem > lastPeriodEndMins || rsm >= lastPeriodEndMins) {
+                        overlapEnd = "24:00";
+                    }
+                    if (rsm < firstPeriodStartMins) {
+                        overlapStart = "00:00";
+                    }
+
+                    combinedGrid[d].push({ ...item, clickFn, getInnerHtml, defBgVar, defTextVar, itemType, renderStart, renderEnd, overlapStart, overlapEnd });
                 }
             };
             
+            (sch.periods || initialDefaultPeriods).forEach(p => {
+                const key = `${d}_${p.id}`;
+                const course = sch.courses ? sch.courses[key] : null;
+                if (course && course.name && !overriddenCourseKeys.has(key)) {
+                    const courseCopy = { ...course, isRegularSchool: true };
+                    const proxyCourse = { key, course: courseCopy, id: key, startTime: p.start, endTime: p.end, color: course.color, isMasked: course.isMasked };
+                    const clickFn = () => handleSlotClick(d, p.id);
+                    processEvent(proxyCourse, d, null, clickFn, (i) => getDisplayHtml(i, 'school', weekKey, isViewingFriend && i.isMasked, i) + getNoteBadgeHtml(d, p.id), "--school-def-bg", "--school-def-text", "is-school");
+                }
+            });
+
             (sch.tutorings || []).forEach(t => { if (!overriddenSourceIds.has(t.id)) processEvent(t, t.day, null, handleTutoringClick, (i) => getDisplayHtml(t, 'tutoring', weekKey, isViewingFriend && t.isMasked, i) + getNoteBadgeHtml(t.day, t.id), "--tutoring-def-bg", "--tutoring-def-text", "is-tutoring"); });
             currentWeekWorks.forEach(w => { if (!overriddenSourceIds.has(w.id)) processEvent(w, w.day, null, handleWorkClick, (i) => getDisplayHtml(w, 'work', weekKey, isViewingFriend && w.isMasked, i) + getNoteBadgeHtml(w.day, w.id), "--tutoring-def-bg", "--tutoring-def-text", "is-work"); });
             (sch.customCourses || []).forEach(c => { 
@@ -2004,22 +2195,110 @@ function renderOriginalSchedule() {
                     processEvent(c, c.day, null, clickFn, (i) => getDisplayHtml(proxyCourse, 'school', weekKey, isViewingFriend && c.isMasked, i) + getNoteBadgeHtml(c.day, c.id), "--school-def-bg", "--school-def-text", "is-school"); 
                 }
             });
-            // 只顯示當週的 Override
             currentWeekOverrides.forEach(o => { processEvent(o, null, o.targetDate, handleOverrideClick, (i) => getDisplayHtml(o, 'override', weekKey, false, i), "--override-temp-def-bg", "--override-temp-def-text", "is-override-temp"); });
+            
             currentWeekTempEvents.forEach(t => { 
-                if (t.slotType !== "noon") { 
-                    let st = t.startTime, et = t.endTime; 
-                    if (t.slotType === "period") { 
-                        const spObj = (sch.periods || initialDefaultPeriods).find(p => String(p.id) === String(t.periodId)); 
-                        if (spObj) { st = spObj.start; et = spObj.end; } 
-                    } 
-                    const proxyItem = { ...t, startTime: st || "12:00", endTime: et || "13:00" }; 
-                    processEvent(proxyItem, t.day, null, handleTempEventClick, (i) => getDisplayHtml(t, 'temp', weekKey, false, i) + getNoteBadgeHtml(t.day, t.id), "--override-temp-def-bg", "--override-temp-def-text", "is-override-temp"); 
+                let st = t.startTime, et = t.endTime; 
+                // 💡 解除限制，讓中午事件進入全日計算
+                if (t.slotType === "noon") { st = "12:00"; et = "13:00"; } 
+                else if (t.slotType === "period") { 
+                    const spObj = (sch.periods || initialDefaultPeriods).find(p => String(p.id) === String(t.periodId)); 
+                    if (spObj) { st = spObj.start; et = spObj.end; } 
                 } 
+                const proxyItem = { ...t, startTime: st || "12:00", endTime: et || "13:00" }; 
+                processEvent(proxyItem, t.day, null, handleTempEventClick, (i) => getDisplayHtml(t, 'temp', weekKey, false, i) + getNoteBadgeHtml(t.day, t.id), "--override-temp-def-bg", "--override-temp-def-text", "is-override-temp"); 
+            });
+
+            window.calculateOverlaps(combinedGrid[d]);
+
+            combinedGrid[d].forEach(item => {
+                let rsm = timeToMinutes(item.renderStart);
+                let rem = timeToMinutes(item.renderEnd);
+                if (rsm > rem) rem = 24 * 60;
+                if (item.renderStart === "24:00") rsm = 24 * 60;
+                if (item.renderEnd === "24:00") rem = 24 * 60;
+
+                item.isMorningStart = rsm < firstPeriodStartMins;
+                item.isDaytimeStart = rsm >= firstPeriodStartMins && rsm < lastPeriodEndMins;
+                item.isEveningStart = rsm >= lastPeriodEndMins;
+
+                if (rsm < firstPeriodStartMins) {
+                    morningGrid[d].push(item);
+                    hasMorningEvents = true; 
+                }
+                if (rem > firstPeriodStartMins && rsm < lastPeriodEndMins) {
+                    daytimeGrid[d].push(item);
+                }
+                if (rem > lastPeriodEndMins || rsm >= lastPeriodEndMins) {
+                    eveningGrid[d].push(item);
+                }
             });
         }
 
         const fragment = document.createDocumentFragment();
+
+        if (hasMorningEvents) {
+            const morningTr = document.createElement("tr"); morningTr.className = "morning-row";
+            morningTr.innerHTML = `<td class="col-time"><div>晨間</div><div style="color:var(--text-muted); font-size:0.58rem;">早修</div></td>`;
+            for (let d = 1; d <= maxDays; d++) {
+                const td = document.createElement("td");
+                const morningCell = document.createElement("div"); morningCell.className = "noon-cell"; 
+                
+                if (morningGrid[d].length > 0) {
+                    const wrapper = document.createElement("div"); wrapper.className = "table-col-wrapper";
+                    const overlayContainer = document.createElement("div"); overlayContainer.className = "col-overlay-container";
+                    
+                    morningGrid[d].forEach(item => {
+                        let em = timeToMinutes(item.renderEnd);
+                        if (item.renderEnd === "24:00") em = 24 * 60;
+                        
+                        const extendsToDaytime = em > firstPeriodStartMins;
+                        const extendsToEvening = em > lastPeriodEndMins;
+                        
+                        let cardTop = 0;
+                        let cardHeight = CELL_HEIGHT - 4;
+                        let radiusStyle = "";
+                        
+                        if (extendsToDaytime) {
+                            const daytimePx = timeToPixelOffset(em, periodsToRender, hasNoonEvents);
+                            cardHeight = CELL_HEIGHT + daytimePx - 4;
+                            radiusStyle = "border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-width: 0; z-index: 30;";
+                            if (extendsToEvening && state.showTutoring) {
+                                cardHeight += CELL_HEIGHT;
+                            }
+                        }
+                        
+                        const floatCard = document.createElement("div"); 
+                        floatCard.className = `tutoring-float-card ${item.itemType} ${alignClass}`;
+                        const styleColor = (!isViewingFriend||!item.isMasked) && item.color ? `background-color: ${item.color}; color: ${getTextColorForBg(item.color)};` : `background-color: var(${item.defBgVar}); color: var(${item.defTextVar});`;
+                        
+                        floatCard.style.cssText = `${styleColor} ${radiusStyle} top: ${cardTop}px; height: ${cardHeight}px; left: calc(${item.leftPct || 0}% + 1px); width: calc(${item.widthPct || 100}% - 2px);`; 
+                        
+                        if (item.isMorningStart) {
+                            floatCard.onclick = (e) => { 
+                                e.stopPropagation(); 
+                                if (item.overlapGroup && item.overlapGroup.length > 1) {
+                                    openOverlapSelectionModal(item.overlapGroup);
+                                } else {
+                                    item.clickFn(item.id); 
+                                }
+                            }; 
+                            floatCard.innerHTML = item.getInnerHtml(item); 
+                        } else {
+                            floatCard.style.opacity = "0";
+                            floatCard.style.pointerEvents = "none";
+                        }
+                        overlayContainer.appendChild(floatCard);
+                    });
+                    wrapper.appendChild(overlayContainer);
+                    morningCell.appendChild(wrapper);
+                } else {
+                    morningCell.innerHTML = `<span class="evening-empty">-</span>`;
+                }
+                td.appendChild(morningCell); morningTr.appendChild(td);
+            }
+            fragment.appendChild(morningTr);
+        }
 
         periodsToRender.forEach((p, pIdx) => {
             const tr = document.createElement("tr");
@@ -2029,29 +2308,20 @@ function renderOriginalSchedule() {
             
             for (let d = 1; d <= maxDays; d++) {
                 const td = document.createElement("td");
-                const key = `${d}_${p.id}`;
                 const wrapper = document.createElement("div"); wrapper.className = "table-col-wrapper"; 
                 const slotDiv = document.createElement("div"); slotDiv.className = "cell-slot";
-                
-                const course = sch.courses ? sch.courses[key] : null; 
                 const noteBadge = getNoteBadgeHtml(d, p.id);
                 
-                if (course && course.name && !overriddenCourseKeys.has(key)) {
-                    slotDiv.onclick = (e) => { e.stopPropagation(); handleSlotClick(d, p.id); };
-                    const msk = isViewingFriend && course.isMasked;
-                    const bgStyle = (!msk && course.color) ? `background-color: ${course.color}; color: ${getTextColorForBg(course.color)};` : `background-color: var(--school-def-bg); color: var(--school-def-text);`;
-                    slotDiv.innerHTML = `<div class="slot-item ${alignClass}" style="${bgStyle}">${getDisplayHtml({course, key}, 'school', weekKey, msk, null)}${noteBadge}</div>`;
-                } else {
-                    slotDiv.onclick = (e) => { e.stopPropagation(); handleSlotClick(d, p.id); };
-                    if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end))) {
-                        slotDiv.style.background = "#dcfce7"; slotDiv.style.border = "1px solid #22c55e";
-                    }
-                    slotDiv.innerHTML = `<span style="color:var(--border); font-size:0.75rem;">+</span>${noteBadge}`;
+                slotDiv.onclick = (e) => { e.stopPropagation(); handleSlotClick(d, p.id); };
+                if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end))) {
+                    slotDiv.style.background = "#dcfce7"; slotDiv.style.border = "1px solid #22c55e";
                 }
+                slotDiv.innerHTML = `<span style="color:var(--border); font-size:0.75rem;">+</span>${noteBadge}`;
                 wrapper.appendChild(slotDiv);
 
                 if (pIdx === 0) {
                     const overlayContainer = document.createElement("div"); overlayContainer.className = "col-overlay-container";
+                    
                     daytimeGrid[d].forEach(item => {
                         const sm = timeToMinutes(item.renderStart); let em = timeToMinutes(item.renderEnd); 
                         if (sm > em) em = 24 * 60; 
@@ -2064,15 +2334,35 @@ function renderOriginalSchedule() {
                         const containerHeight = periodsToRender.length * CELL_HEIGHT + (hasNoonEvents ? CELL_HEIGHT : 0);
                         
                         if (extendsToEvening) { 
-                            if (state.showTutoring) { cardHeight = (bottomPx - topPx) + CELL_HEIGHT - 4; radiusStyle = "z-index: 15;"; } 
-                            else { radiusStyle = "border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-width: 0; box-shadow: 0 -1px 2px rgba(0,0,0,0.06); z-index: 15;"; if (cardTop + cardHeight > containerHeight) { cardTop = containerHeight - cardHeight; } } 
+                            if (state.showTutoring) { 
+                                cardHeight = (bottomPx - topPx) + CELL_HEIGHT - 4; 
+                                radiusStyle = "z-index: 20;"; 
+                            } 
+                            else { 
+                                radiusStyle = "border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom-width: 0; box-shadow: 0 -1px 2px rgba(0,0,0,0.06); z-index: 20;"; 
+                                if (cardTop + cardHeight > containerHeight) { cardTop = containerHeight - cardHeight; } 
+                            } 
                         } else { if (cardTop + cardHeight > containerHeight) { cardTop = containerHeight - cardHeight; } }
                         
                         const floatCard = document.createElement("div"); floatCard.className = `tutoring-float-card ${item.itemType} ${alignClass}`;
                         const styleColor = (!isViewingFriend||!item.isMasked) && item.color ? `background-color: ${item.color}; color: ${getTextColorForBg(item.color)};` : `background-color: var(${item.defBgVar}); color: var(${item.defTextVar});`;
-                        floatCard.style.cssText = `${styleColor} top: ${cardTop}px; height: ${cardHeight}px; ${radiusStyle}`;
-                        floatCard.onclick = (e) => { e.stopPropagation(); item.clickFn(item.id); }; 
-                        floatCard.innerHTML = item.getInnerHtml(item); 
+                        
+                        floatCard.style.cssText = `${styleColor} top: ${cardTop}px; height: ${cardHeight}px; left: calc(${item.leftPct || 0}% + 1px); width: calc(${item.widthPct || 100}% - 2px); ${radiusStyle}`;
+                        
+                        if (!item.isDaytimeStart) {
+                            floatCard.style.opacity = "0";
+                            floatCard.style.pointerEvents = "none";
+                        } else {
+                            floatCard.onclick = (e) => { 
+                                e.stopPropagation(); 
+                                if (item.overlapGroup && item.overlapGroup.length > 1) {
+                                    openOverlapSelectionModal(item.overlapGroup);
+                                } else {
+                                    item.clickFn(item.id); 
+                                }
+                            }; 
+                            floatCard.innerHTML = item.getInnerHtml(item); 
+                        }
                         overlayContainer.appendChild(floatCard);
                     });
                     wrapper.appendChild(overlayContainer);
@@ -2086,16 +2376,8 @@ function renderOriginalSchedule() {
                 noonTr.innerHTML = `<td class="col-time"><div>中午</div><div style="color:var(--text-muted); font-size:0.58rem;">午休</div></td>`;
                 for (let d = 1; d <= maxDays; d++) {
                     const td = document.createElement("td"); const noonCell = document.createElement("div"); noonCell.className = "noon-cell";
-                    const dayNoonTemps = currentWeekTempEvents.filter((t) => Number(t.day) === d && t.slotType === "noon");
-                    if (dayNoonTemps.length > 0) { 
-                        dayNoonTemps.forEach((tmp) => { 
-                            const card = document.createElement("div"); card.className = `noon-card is-override-temp ${alignClass}`; 
-                            card.style.cssText = `background-color: var(--override-temp-def-bg); color: var(--override-temp-def-text);`; 
-                            card.onclick = (e) => { e.stopPropagation(); handleTempEventClick(tmp.id); }; 
-                            card.innerHTML = `<div class="item-title">${escapeHtml(tmp.title)}</div>`; 
-                            noonCell.appendChild(card); 
-                        }); 
-                    } else { noonCell.innerHTML = `<span class="noon-empty">-</span>`; }
+                    // 💡 將單獨算碰撞的中午迴圈移除，由 daytimeGrid 統一接管排版！
+                    noonCell.innerHTML = `<span class="noon-empty">-</span>`; 
                     td.appendChild(noonCell); noonTr.appendChild(td);
                 }
                 fragment.appendChild(noonTr);
@@ -2107,15 +2389,41 @@ function renderOriginalSchedule() {
             eveningTr.innerHTML = `<td class="col-time"><div>課後</div><div style="color:var(--text-muted); font-size:0.58rem;">夜間</div></td>`;
             for (let d = 1; d <= maxDays; d++) {
                 const td = document.createElement("td"); const eveningCell = document.createElement("div"); eveningCell.className = "evening-cell"; 
-                let hasContent = false;
-                eveningGrid[d].forEach(item => {
-                    hasContent = true; let radiusStyle = item.extendsFromDaytime ? "opacity: 0; pointer-events: none;" : "";
-                    const card = document.createElement("div"); card.className = `evening-card ${item.itemType} ${alignClass}`;
-                    const styleColor = (!isViewingFriend||!item.isMasked) && item.color ? `background-color: ${item.color}; color: ${getTextColorForBg(item.color)};` : `background-color: var(${item.defBgVar}); color: var(${item.defTextVar});`;
-                    card.style.cssText = `${styleColor} ${radiusStyle}`; card.onclick = (e) => { e.stopPropagation(); item.clickFn(item.id); }; 
-                    card.innerHTML = item.getInnerHtml(item); eveningCell.appendChild(card);
-                });
-                if (!hasContent) eveningCell.innerHTML = `<span class="evening-empty">無夜間行程</span>`;
+                
+                if (eveningGrid[d].length > 0) {
+                    const wrapper = document.createElement("div"); wrapper.className = "table-col-wrapper";
+                    const overlayContainer = document.createElement("div"); overlayContainer.className = "col-overlay-container";
+                    
+                    eveningGrid[d].forEach(item => {
+                        let radiusStyle = !item.isEveningStart ? "border-top-left-radius: 0; border-top-right-radius: 0; border-top: none;" : "";
+                        
+                        const floatCard = document.createElement("div"); 
+                        floatCard.className = `tutoring-float-card ${item.itemType} ${alignClass}`;
+                        const styleColor = (!isViewingFriend||!item.isMasked) && item.color ? `background-color: ${item.color}; color: ${getTextColorForBg(item.color)};` : `background-color: var(${item.defBgVar}); color: var(${item.defTextVar});`;
+                        
+                        floatCard.style.cssText = `${styleColor} ${radiusStyle} top: 0px; height: 100%; left: calc(${item.leftPct || 0}% + 1px); width: calc(${item.widthPct || 100}% - 2px);`; 
+                        
+                        if (!item.isEveningStart) {
+                            floatCard.style.opacity = "0";
+                            floatCard.style.pointerEvents = "none";
+                        } else {
+                            floatCard.onclick = (e) => { 
+                                e.stopPropagation(); 
+                                if (item.overlapGroup && item.overlapGroup.length > 1) {
+                                    openOverlapSelectionModal(item.overlapGroup);
+                                } else {
+                                    item.clickFn(item.id); 
+                                }
+                            }; 
+                            floatCard.innerHTML = item.getInnerHtml(item); 
+                        }
+                        overlayContainer.appendChild(floatCard);
+                    });
+                    wrapper.appendChild(overlayContainer);
+                    eveningCell.appendChild(wrapper);
+                } else {
+                    eveningCell.innerHTML = `<span class="evening-empty">無夜間行程</span>`;
+                }
                 td.appendChild(eveningCell); eveningTr.appendChild(td);
             }
             fragment.appendChild(eveningTr);
@@ -2124,7 +2432,6 @@ function renderOriginalSchedule() {
         tbody.appendChild(fragment);
     } catch (err) { console.error("渲染一般課表失敗:", err); showToast("渲染課表時發生錯誤", "error"); }
 }
-
 function render24HourSchedule() {
     try {
         const sch = getActiveSchedule();
@@ -2137,7 +2444,7 @@ function render24HourSchedule() {
         document.getElementById("week-range-text").innerText = `${monday.getFullYear()} 年 ${formatShortDate(monday)} ~ ${formatShortDate(rangeEnd)}`;
         
         const tableEl = document.getElementById("schedule-table"); 
-        if (tableEl) tableEl.style.width = state.showTutoring ? "calc(68px + (100% - 68px) / 5 * 7)" : "100%";
+        if (tableEl) tableEl.style.width = state.showTutoring ? "calc(48px + (100% - 48px) / 5 * 7)" : "100%";
         const thead = document.getElementById("schedule-head"); thead.innerHTML = ""; 
         const headTr = document.createElement("tr"); headTr.innerHTML = `<th class="col-time">時間</th>`;
         
@@ -2223,6 +2530,8 @@ function render24HourSchedule() {
                         segments.forEach(seg => { 
                             const b = getNoteBadgeHtml(itemDay || d, item.id);
                             renderList.push({ 
+                                ...seg, // 👉 關鍵修復：把原始的 student, name, title 一起塞入
+                                course: seg, // 支援 customCourse
                                 color: (isViewingFriend && item.isMasked) ? null : seg.color, 
                                 startTime: seg.startTime, 
                                 endTime: seg.endTime, 
@@ -2250,19 +2559,19 @@ function render24HourSchedule() {
                     });
                     
                     mergedCourses.forEach(item => { 
-                        const msk = isViewingFriend && item.course.isMasked; 
-                        renderList.push({ 
-                            color: msk ? null : item.course.color, 
-                            startTime: item.sp.start, 
-                            endTime: item.sp.end, 
-                            itemType: 'is-school', 
-                            clickFn: () => handleSlotClick(d, item.sp.id), 
-                            innerHtml: getDisplayHtml(item, 'school', weekKey, msk, null), 
-                            defBgVar: '--school-def-bg', 
-                            defTextVar: '--school-def-text' 
-                        }); 
-                    });
-                    
+                const msk = isViewingFriend && item.course.isMasked; 
+                renderList.push({ 
+                    course: item.course, // 👉 關鍵修復：傳入原始 course 物件供 Modal 讀取
+                    color: msk ? null : item.course.color, 
+                    startTime: item.sp.start, 
+                    endTime: item.sp.end, 
+                    itemType: 'is-school', 
+                    clickFn: () => handleSlotClick(d, item.sp.id), 
+                    innerHtml: getDisplayHtml(item, 'school', weekKey, msk, null), 
+                    defBgVar: '--school-def-bg', 
+                    defTextVar: '--school-def-text' 
+                }); 
+            });
                     (sch.customCourses || []).forEach(c => { 
                         if (overriddenCourseKeys.has(`${c.day}_${c.id}`)) return; 
                         addSegments(c, c.day, undefined, 
@@ -2285,6 +2594,8 @@ function render24HourSchedule() {
                         addSegments(proxyItem, t.day, undefined, handleTempEventClick, (seg) => getDisplayHtml(t, 'temp', weekKey, false, seg), '--override-temp-def-bg', '--override-temp-def-text', 'is-override-temp'); 
                     });
 
+                    window.calculateOverlaps(renderList);
+                    
                     renderList.forEach(item => {
                         const sm = timeToMinutes(item.startTime); const em = timeToMinutes(item.endTime === "24:00" ? "24:00" : item.endTime); 
                         const topPx = timeToPixelOffset(sm, periods24); const bottomPx = timeToPixelOffset(em, periods24);
@@ -2296,8 +2607,19 @@ function render24HourSchedule() {
                         
                         const floatCard = document.createElement("div"); floatCard.className = `tutoring-float-card ${item.itemType} ${alignClass}`;
                         const colorStyle = item.color ? `background-color: ${item.color}; color: ${getTextColorForBg(item.color)};` : `background-color: var(${item.defBgVar}); color: var(${item.defTextVar});`;
-                        floatCard.style.cssText = `${colorStyle} top: ${cardTop}px; height: ${cardHeight}px; ${radiusStyle}`;
-                        floatCard.onclick = (e) => { e.stopPropagation(); item.clickFn(); }; floatCard.innerHTML = item.innerHtml; 
+                        
+                        // 追加 left 與 width 分割樣式
+                        floatCard.style.cssText = `${colorStyle} top: ${cardTop}px; height: ${cardHeight}px; left: calc(${item.leftPct || 0}% + 1px); width: calc(${item.widthPct || 100}% - 2px); ${radiusStyle}`;
+                        
+                        floatCard.onclick = (e) => { 
+                            e.stopPropagation(); 
+                            if (item.overlapGroup && item.overlapGroup.length > 1) {
+                                openOverlapSelectionModal(item.overlapGroup);
+                            } else {
+                                item.clickFn(item.id); 
+                            }
+                        }; 
+                        floatCard.innerHTML = item.innerHtml; 
                         overlayContainer.appendChild(floatCard);
                     });
                     wrapper.appendChild(overlayContainer);
@@ -2583,25 +2905,25 @@ function openViewDetailModal(type, payload, activeTab = 'info') {
 }
 
 function revertCurrentOverride() { 
-    if (confirm("確定取消此調課？")) { 
+    showConfirm("確定取消此調課？", () => { 
         const sch = getActiveSchedule(); 
         sch.overrides = (sch.overrides || []).filter(o => o.id !== currentViewingOverrideId); 
         saveToStorage(); renderSchedule(); closeModal("view-detail-modal"); showToast("已復原調課");
-    } 
+    }); 
 }
 function deleteOverrideFromModal() { 
-    if (confirm("確定刪除此調課？")) { 
+    showConfirm("確定刪除此調課紀錄？", () => { 
         const sch = getActiveSchedule(); 
         sch.overrides = (sch.overrides || []).filter(o => o.id !== currentEditingOverrideId); 
         saveToStorage(); renderSchedule(); closeModal("override-modal"); showToast("已刪除調課紀錄");
-    } 
+    }); 
 }
 function deleteTempEventFromModal() { 
-    if (confirm("確定刪除此事件？")) { 
+    showConfirm("確定刪除此事件？", () => { 
         const sch = getActiveSchedule(); 
         sch.temporaryEvents = (sch.temporaryEvents || []).filter(t => t.id !== currentEditingTempEventId); 
         saveToStorage(); renderSchedule(); closeModal("temp-event-modal"); showToast("已刪除臨時事件");
-    } 
+    }); 
 }
 
 // ========================================================
@@ -2821,7 +3143,7 @@ function saveSchoolCourse() {
 // 連帶修改 deleteSchoolCourse 以支援刪除 customCourse
 function deleteSchoolCourse() { 
     if (!currentEditingSlot) return; 
-    if (confirm("刪除該課程？")) { 
+    showConfirm("刪除該課程？", () => {
         triggerHaptic(25); 
         const sch = getActiveSchedule();
         const key = `${currentEditingSlot.day}_${currentEditingSlot.period}`;
@@ -2841,7 +3163,7 @@ function deleteSchoolCourse() {
         renderSchedule(); 
         closeModal("school-modal"); 
         showToast("已刪除該課程");
-    } 
+    });
 }
 
 // ========================================================
@@ -2892,7 +3214,10 @@ function saveTutoringClass() {
 }
 
 function deleteTutoringClass() { 
-    if (confirm("刪除此家教？")) { getActiveSchedule().tutorings = getActiveSchedule().tutorings.filter(t => t.id !== currentEditingTutoringId); saveToStorage(); renderSchedule(); closeModal("tutoring-modal"); showToast("已刪除家教紀錄"); } 
+    showConfirm("刪除此家教？", () => { 
+        getActiveSchedule().tutorings = getActiveSchedule().tutorings.filter(t => t.id !== currentEditingTutoringId); 
+        saveToStorage(); renderSchedule(); closeModal("tutoring-modal"); showToast("已刪除家教紀錄"); 
+    }); 
 }
 
 function openWorkModal(id = null) {
@@ -2926,9 +3251,11 @@ function saveWorkClass() {
 }
 
 function deleteWorkClass() { 
-    if (confirm("刪除此工作排程？")) { getActiveSchedule().works = getActiveSchedule().works.filter((w) => w.id !== currentEditingWorkId); saveToStorage(); renderSchedule(); closeModal("work-modal"); showToast("已刪除工作排程"); } 
+    showConfirm("刪除此工作排程？", () => { 
+        getActiveSchedule().works = getActiveSchedule().works.filter((w) => w.id !== currentEditingWorkId); 
+        saveToStorage(); renderSchedule(); closeModal("work-modal"); showToast("已刪除工作排程"); 
+    }); 
 }
-
 // ========================================================
 // 臨時事件與調課 Modal
 // ========================================================
@@ -3091,13 +3418,13 @@ function onSelectPresetWork(jsonStr) {
 }
 
 function clearAllCustomColors() { 
-    if (confirm("確定清除？")) { 
+    showConfirm("確定清除所有自訂顏色？", () => { 
         triggerHaptic(25); const sch = state.schedules.find(s => s.id === state.activeScheduleId); 
         if (sch.courses) Object.keys(sch.courses).forEach((k) => delete sch.courses[k].color); 
         if (sch.customCourses) sch.customCourses.forEach((c) => delete c.color);
         if (sch.tutorings) sch.tutorings.forEach((t) => delete t.color); if (sch.works) sch.works.forEach((w) => delete w.color); 
         saveToStorage(); renderSchedule(); showToast("已清除所有自訂顏色"); 
-    } 
+    }); 
 }
 function resetSchoolColor() { document.getElementById("sch-color").value = getDefaultSchoolBgHex(); }
 function resetTutoringColor() { document.getElementById("tut-color").value = getDefaultTutoringBgHex(); }
@@ -3125,7 +3452,6 @@ function renderBillings() {
     const selectedMonth = document.getElementById("bill-month-filter").value;
     const sortOrder = document.getElementById("bill-sort-order").value;
     
-    // 👇 新增的按鈕亮色邏輯 👇
     const btnBillCur = document.getElementById("btn-bill-month-current");
     const btnBillAll = document.getElementById("btn-bill-month-all");
     if (btnBillCur && btnBillAll) {
@@ -3145,42 +3471,38 @@ function renderBillings() {
     Array.from(allNamesSet).forEach(item => { chipsHtml += `<div class="student-chip ${currentSelectedStudentFilter === item ? "active" : ""}" onclick="setStudentFilter('${escapeJS(item)}')">${escapeHtml(item)}</div>`; }); 
     chips.innerHTML = chipsHtml;
     
-    let tH = 0, tI = 0, tU = 0; const statMap = {};
+    let tI = 0, tU = 0; const statMap = {};
     (isWork ? state.workBillings : state.billings).forEach(r => { 
         if (selectedMonth && (r.date || '').slice(0, 7) !== selectedMonth) return; 
         const targetName = (isWork ? r.name : r.student) || "未具名";
-        const h = Number(r.hours || 0); const tot = Number(r.total || 0); 
-        if (!statMap[targetName]) statMap[targetName] = { h:0, i:0, u:0, p:0 }; 
-        statMap[targetName].h += h; statMap[targetName].i += tot; 
+        const tot = Number(r.total || 0); 
+        if (!statMap[targetName]) statMap[targetName] = { i:0, u:0, p:0 }; 
+        statMap[targetName].i += tot; 
         if (r.status === "unpaid") statMap[targetName].u += tot; else statMap[targetName].p += tot; 
-        if (currentSelectedStudentFilter === "__FILTER_ALL__" || currentSelectedStudentFilter === targetName) { tH += h; tI += tot; if (r.status === "unpaid") tU += tot; } 
+        if (currentSelectedStudentFilter === "__FILTER_ALL__" || currentSelectedStudentFilter === targetName) { tI += tot; if (r.status === "unpaid") tU += tot; } 
     });
     
     const statsC = document.getElementById("student-stats-container"); let statsHtml = ""; 
-    Object.keys(statMap).forEach(k => { statsHtml += `<div class="student-stat-card"><div class="student-stat-name">${escapeHtml(k)}</div><div class="student-stat-row"><span>時數：</span><strong>${statMap[k].h} hr</strong></div><div class="student-stat-row"><span>應收：</span><strong>$${statMap[k].i.toLocaleString()}</strong></div><div class="student-stat-row"><span>已收：</span><span style="color:#15803d; font-weight:700;">$${statMap[k].p.toLocaleString()}</span></div><div class="student-stat-row"><span>未繳：</span><span style="color:#ef4444; font-weight:700;">$${statMap[k].u.toLocaleString()}</span></div></div>`; }); 
+    Object.keys(statMap).forEach(k => { statsHtml += `<div class="student-stat-card"><div class="student-stat-name">${escapeHtml(k)}</div><div class="student-stat-row"><span>應收：</span><strong>$${statMap[k].i.toLocaleString()}</strong></div><div class="student-stat-row"><span>已收：</span><span style="color:#15803d; font-weight:700;">$${statMap[k].p.toLocaleString()}</span></div><div class="student-stat-row"><span>未繳：</span><span style="color:#ef4444; font-weight:700;">$${statMap[k].u.toLocaleString()}</span></div></div>`; }); 
     statsC.innerHTML = statsHtml;
     
     const targetArray = isWork ? state.workBillings : state.billings;
-const filtered = targetArray.map((record, idx) => ({record, idx}))
+    const filtered = targetArray.map((record, idx) => ({record, idx}))
         .filter(({record}) => (!selectedMonth || (record.date||'').slice(0,7) === selectedMonth) && (currentSelectedStudentFilter === "__FILTER_ALL__" || (isWork ? record.name : record.student) === currentSelectedStudentFilter))
         .sort((a,b) => sortOrder === "asc" ? (a.record.date || "").localeCompare(b.record.date || "") : (b.record.date || "").localeCompare(a.record.date || ""));   
+    
     const fragment = document.createDocumentFragment();
     if (filtered.length === 0) {
-        const tr = document.createElement("tr"); tr.innerHTML = `<td colspan="8" style="text-align:center; color:var(--text-muted); padding:12px;">無紀錄</td>`; fragment.appendChild(tr);
+        const tr = document.createElement("tr"); tr.innerHTML = `<td colspan="6" style="text-align:center; color:var(--text-muted); padding:12px;">無紀錄</td>`; fragment.appendChild(tr);
     } else {
         filtered.forEach(({record, idx}) => { 
             const tr = document.createElement("tr");
-            
-            // 調整：把日期拆為兩行 (年份 與 月-日)
-            // 加上空值保護
             const dateStr = record.date || "";
             const dateParts = dateStr.split('-');
             const dateHtml = dateParts.length === 3 ? `${dateParts[0]}<br>${dateParts[1]}-${dateParts[2]}` : dateStr;
 
             tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}</td>
                             <td><strong>${escapeHtml(isWork ? record.name : record.student)}</strong></td>
-                            <td>${record.hours}h</td>
-                            <td>$${record.rate}</td>
                             <td><strong style="color:var(--primary);">$${record.total}</strong></td>
                             <td><span class="${record.status === "paid" ? "tag-paid" : "tag-unpaid"}">${record.status === "paid" ? "已清" : "未清"}</span></td>
                             <td>${escapeHtml(record.notes || "-")}</td>
@@ -3190,7 +3512,10 @@ const filtered = targetArray.map((record, idx) => ({record, idx}))
     }
     tbody.innerHTML = ""; tbody.appendChild(fragment);
     
-    document.getElementById("stat-total-hours").innerText = `${tH} 小時`; document.getElementById("stat-total-income").innerText = `$${tI.toLocaleString()}`; document.getElementById("stat-unpaid").innerText = `$${tU.toLocaleString()}`;
+    // 隱藏總時數欄位
+    const thTitle = document.getElementById("stat-total-hours");
+    if(thTitle) thTitle.parentElement.style.display = "none";
+    document.getElementById("stat-total-income").innerText = `$${tI.toLocaleString()}`; document.getElementById("stat-unpaid").innerText = `$${tU.toLocaleString()}`;
 }
 
 async function syncBillingToFinance(billId, date, total, notes, isWork = false, status = "unpaid") {
@@ -3226,29 +3551,57 @@ async function syncBillingToFinance(billId, date, total, notes, isWork = false, 
 }
 
 function openBillingModal(idx = null) {
-    currentEditingBillingIndex = idx; const sel = document.getElementById("bill-student-select"); sel.innerHTML = '<option value="">-- 現有家教 --</option>';
+    currentEditingBillingIndex = idx; 
+    const sel = document.getElementById("bill-student-select"); 
+    sel.innerHTML = '<option value="">-- 現有家教 --</option>';
     new Set((state.schedules || []).flatMap(s => (s.tutorings || []).map(t => t.student))).forEach(s => { if (s) sel.appendChild(new Option(s, s)); });
-    if (idx !== null) { const item = state.billings[idx]; ["date","student","hours","rate","total","status","notes"].forEach(k => { document.getElementById(`bill-${k}`).value = item[k] || ""; }); } 
-    else { ["student","notes"].forEach(k => document.getElementById(`bill-${k}`).value = ""); document.getElementById("bill-date").value = formatDate(new Date()); document.getElementById("bill-hours").value = "2"; document.getElementById("bill-status").value = "unpaid"; updateBillingRateByDateAndStudent(); }
+    
+    if (idx !== null) { 
+        const item = state.billings[idx]; 
+        ["date","student","hours","rate","total","status","notes"].forEach(k => { document.getElementById(`bill-${k}`).value = item[k] || ""; }); 
+    } else { 
+        ["student","notes"].forEach(k => document.getElementById(`bill-${k}`).value = ""); 
+        document.getElementById("bill-date").value = formatDate(new Date()); 
+        document.getElementById("bill-hours").value = "2"; 
+        document.getElementById("bill-status").value = "unpaid"; 
+        updateBillingRateByDateAndStudent(); 
+    }
     document.getElementById("billing-modal").classList.add("active");
 }
 function onSelectBillingStudent() { document.getElementById("bill-student").value = document.getElementById("bill-student-select").value; updateBillingRateByDateAndStudent(); }
 function onBillingDateOrStudentChange() { updateBillingRateByDateAndStudent(); }
 function updateBillingRateByDateAndStudent() { 
     if (currentEditingBillingIndex !== null) return; 
-    const name = document.getElementById("bill-student").value.trim(); const tuts = (state.schedules || []).flatMap(s => (s.tutorings || []).filter(t => t.student === name)); 
-    const targetDay = (parseLocalDate(document.getElementById("bill-date").value).getDay() || 7); const targetTut = tuts.find(t => Number(t.day) === targetDay) || tuts[0] || {rate: ""};
-    document.getElementById("bill-rate").value = targetTut.rate || ""; calcBillAmount(); 
+    const name = document.getElementById("bill-student").value.trim(); 
+    const tuts = (state.schedules || []).flatMap(s => (s.tutorings || []).filter(t => t.student === name)); 
+    const targetDay = (parseLocalDate(document.getElementById("bill-date").value).getDay() || 7); 
+    const targetTut = tuts.find(t => Number(t.day) === targetDay) || tuts[0] || {rate: ""};
+    document.getElementById("bill-rate").value = targetTut.rate || ""; 
+    calcBillAmount(); 
 }
-function calcBillAmount() { document.getElementById("bill-total").value = Math.round((Number(document.getElementById("bill-hours").value) || 0) * (Number(document.getElementById("bill-rate").value) || 0)); }
+function calcBillAmount() { 
+    document.getElementById("bill-total").value = Math.round((Number(document.getElementById("bill-hours").value) || 0) * (Number(document.getElementById("bill-rate").value) || 0)); 
+}
 
 async function saveBillingRecord() {
-    const date = document.getElementById("bill-date").value; const student = document.getElementById("bill-student").value.trim();
-    const hours = document.getElementById("bill-hours").value; const rate = document.getElementById("bill-rate").value; const total = document.getElementById("bill-total").value;
+    const date = document.getElementById("bill-date").value; 
+    const student = document.getElementById("bill-student").value.trim();
+    const hours = document.getElementById("bill-hours").value; 
+    const rate = document.getElementById("bill-rate").value; 
+    const total = document.getElementById("bill-total").value;
+    
     if (!date || !student || !hours || !rate) { showToast("請完整填寫！", "error"); return; }
+    
     const status = document.getElementById("bill-status").value;
-    const obj = { id: currentEditingBillingIndex !== null ? state.billings[currentEditingBillingIndex].id : "bill_" + Date.now(), date, student, hours, rate, total, status: status, notes: document.getElementById("bill-notes").value.trim() };
-    if (currentEditingBillingIndex !== null) { state.billings[currentEditingBillingIndex] = obj; } else { state.billings.unshift(obj); }
+    const obj = { 
+        id: currentEditingBillingIndex !== null ? state.billings[currentEditingBillingIndex].id : "bill_" + Date.now(), 
+        date, student, hours, rate, total, status: status, 
+        notes: document.getElementById("bill-notes").value.trim() 
+    };
+    
+    if (currentEditingBillingIndex !== null) { state.billings[currentEditingBillingIndex] = obj; } 
+    else { state.billings.unshift(obj); }
+    
     await syncBillingToFinance(obj.id, date, total, `家教: ${student} (${hours}hr)`, false, status);
     saveToStorage(); renderBillings(); renderFinances(); closeModal("billing-modal"); showToast("帳務已儲存");
 }
@@ -3259,30 +3612,63 @@ function toggleBillStatus(idx) {
         saveToStorage(); renderBillings(); if(typeof renderFinances === 'function') renderFinances();
     });
 }
-function deleteBilling(idx) { if (confirm("刪除？")) { state.finances = state.finances.filter(f => f.id !== "fin_sync_" + state.billings[idx].id); state.billings.splice(idx, 1); saveToStorage(); renderBillings(); renderFinances(); showToast("已刪除紀錄"); } }
+function deleteBilling(idx) { 
+    showConfirm("確定刪除此帳務紀錄？", () => { 
+        state.finances = state.finances.filter(f => f.id !== "fin_sync_" + state.billings[idx].id); 
+        state.billings.splice(idx, 1); 
+        saveToStorage(); renderBillings(); renderFinances(); showToast("已刪除紀錄"); 
+    }); 
+}
 
 function openWorkBillingModal(idx = null) {
-    currentEditingWorkBillingIndex = idx; const sel = document.getElementById("wbill-name-select"); sel.innerHTML = '<option value="">-- 現有工作 --</option>';
+    currentEditingWorkBillingIndex = idx; 
+    const sel = document.getElementById("wbill-name-select"); 
+    sel.innerHTML = '<option value="">-- 現有工作 --</option>';
     new Set((state.schedules || []).flatMap(s => (s.works || []).map(w => w.name))).forEach(n => { if (n) sel.appendChild(new Option(n, n)); });
-    if (idx !== null) { const item = state.workBillings[idx]; ["date","name","hours","rate","total","status","notes"].forEach(k => document.getElementById(`wbill-${k}`).value = item[k] || ""); } 
-    else { ["name","notes"].forEach(k => document.getElementById(`wbill-${k}`).value = ""); document.getElementById("wbill-date").value = formatDate(new Date()); document.getElementById("wbill-hours").value = "4"; document.getElementById("wbill-status").value = "unpaid"; updateWorkBillingRateByDateAndName(); }
+    
+    if (idx !== null) { 
+        const item = state.workBillings[idx]; 
+        ["date","name","hours","rate","total","status","notes"].forEach(k => document.getElementById(`wbill-${k}`).value = item[k] || ""); 
+    } else { 
+        ["name","notes"].forEach(k => document.getElementById(`wbill-${k}`).value = ""); 
+        document.getElementById("wbill-date").value = formatDate(new Date()); 
+        document.getElementById("wbill-hours").value = "4"; 
+        document.getElementById("wbill-status").value = "unpaid"; 
+        updateWorkBillingRateByDateAndName(); 
+    }
     document.getElementById("work-billing-modal").classList.add("active");
 }
 function onSelectBillingWork() { document.getElementById("wbill-name").value = document.getElementById("wbill-name-select").value; updateWorkBillingRateByDateAndName(); }
 function onWorkBillingDateOrNameChange() { updateWorkBillingRateByDateAndName(); }
 function updateWorkBillingRateByDateAndName() { 
     if (currentEditingWorkBillingIndex !== null) return; 
-    const name = document.getElementById("wbill-name").value.trim(); document.getElementById("wbill-rate").value = ((state.schedules || []).flatMap(s => (s.works || []).filter(w => w.name === name))[0] || {rate:""}).rate || ""; calcWorkBillAmount(); 
+    const name = document.getElementById("wbill-name").value.trim(); 
+    document.getElementById("wbill-rate").value = ((state.schedules || []).flatMap(s => (s.works || []).filter(w => w.name === name))[0] || {rate:""}).rate || ""; 
+    calcWorkBillAmount(); 
 }
-function calcWorkBillAmount() { document.getElementById("wbill-total").value = Math.round((Number(document.getElementById("wbill-hours").value) || 0) * (Number(document.getElementById("wbill-rate").value) || 0)); }
+function calcWorkBillAmount() { 
+    document.getElementById("wbill-total").value = Math.round((Number(document.getElementById("wbill-hours").value) || 0) * (Number(document.getElementById("wbill-rate").value) || 0)); 
+}
 
 async function saveWorkBillingRecord() {
-    const date = document.getElementById("wbill-date").value; const name = document.getElementById("wbill-name").value.trim();
-    const hours = document.getElementById("wbill-hours").value; const rate = document.getElementById("wbill-rate").value; const total = document.getElementById("wbill-total").value;
+    const date = document.getElementById("wbill-date").value; 
+    const name = document.getElementById("wbill-name").value.trim();
+    const hours = document.getElementById("wbill-hours").value; 
+    const rate = document.getElementById("wbill-rate").value; 
+    const total = document.getElementById("wbill-total").value;
+    
     if (!date || !name || !hours || !rate) { showToast("請完整填寫！", "error"); return; }
+    
     const status = document.getElementById("wbill-status").value;
-    const obj = { id: currentEditingWorkBillingIndex !== null ? state.workBillings[currentEditingWorkBillingIndex].id : "wbill_" + Date.now(), date, name, hours, rate, total, status: status, notes: document.getElementById("wbill-notes").value.trim() };
-    if (currentEditingWorkBillingIndex !== null) { state.workBillings[currentEditingWorkBillingIndex] = obj; } else { state.workBillings.unshift(obj); }
+    const obj = { 
+        id: currentEditingWorkBillingIndex !== null ? state.workBillings[currentEditingWorkBillingIndex].id : "wbill_" + Date.now(), 
+        date, name, hours, rate, total, status: status, 
+        notes: document.getElementById("wbill-notes").value.trim() 
+    };
+    
+    if (currentEditingWorkBillingIndex !== null) { state.workBillings[currentEditingWorkBillingIndex] = obj; } 
+    else { state.workBillings.unshift(obj); }
+    
     await syncBillingToFinance(obj.id, date, total, `工作: ${name} (${hours}hr)`, true, status);
     saveToStorage(); renderBillings(); renderFinances(); closeModal("work-billing-modal"); showToast("帳務已儲存");
 }
@@ -3293,7 +3679,13 @@ function toggleWorkBillStatus(idx) {
         saveToStorage(); renderBillings(); if(typeof renderFinances === 'function') renderFinances();
     });
 }
-function deleteWorkBilling(idx) { if (confirm("刪除？")) { state.finances = state.finances.filter(f => f.id !== "fin_sync_" + state.workBillings[idx].id); state.workBillings.splice(idx, 1); saveToStorage(); renderBillings(); renderFinances(); showToast("已刪除紀錄"); } }
+function deleteWorkBilling(idx) { 
+    showConfirm("確定刪除此帳務紀錄？", () => { 
+        state.finances = state.finances.filter(f => f.id !== "fin_sync_" + state.workBillings[idx].id); 
+        state.workBillings.splice(idx, 1); 
+        saveToStorage(); renderBillings(); renderFinances(); showToast("已刪除紀錄"); 
+    }); 
+}
 
 // ========================================================
 // 收支管理 (Finance)
@@ -3509,7 +3901,7 @@ async function confirmRepay() {
     } catch (e) { console.error("還款處理失敗:", e); showToast("還款處理失敗", "error"); }
 }
 
-async function deleteFinanceRecord(id) {
+window.deleteFinanceRecord = function(id) {
     if (id && id.startsWith("fin_sync_")) {
         showToast("連動的帳務紀錄無法在此刪除，請至打工/家教帳務修改", "error");
         return;
@@ -3519,34 +3911,58 @@ async function deleteFinanceRecord(id) {
     const isShared = !!(target.linkedFriendId || target.targetDebtId);
     const isCreditor = target.type === 'receivable' || (target.type === 'income' && target.subCat === '還款');
 
-    if (isShared && !isCreditor && target.subCat !== "還款") { showToast("只有應收方可以發起刪除主借款紀錄！", "error"); return; }
+    if (isShared && !isCreditor && target.subCat !== "還款") { 
+        showToast("只有應收方可以發起刪除主借款紀錄！", "error"); return; 
+    }
 
-    try {
-        if (target.subCat === "還款") {
-            if (target.isPending) { state.finances = state.finances.filter(f => f.id !== id); saveToStorage(); renderFinances(); return; } 
-            else if (target.linkedFriendId && currentUser) {
-                if (!confirm("此為連線還款紀錄，確定發送刪除請求？")) return;
-                await supabaseClient.from('user_messages').insert({ sender_id: currentUser.id, receiver_id: target.linkedFriendId, type: 'delete_repay_request', payload: { sourceId: target.sharedId || target.id, targetDebtId: target.targetDebtId, amount: target.amount } });
-                showToast("已發送還款刪除請求，待對方同意後同步刪除！"); return;
-            }
-        } else if (isShared && isCreditor && target.linkedFriendId && currentUser) {
-             if (!confirm("此為連線紀錄，確定發送刪除請求？（將連帶刪除相關還款紀錄）")) return;
-             await supabaseClient.from('user_messages').insert({ sender_id: currentUser.id, receiver_id: target.linkedFriendId, type: 'delete_request', payload: { sourceId: id, targetDebtId: target.targetDebtId, amount: target.amount } });
-             showToast("已發送刪除請求，待對方同意後同步刪除！"); return;
-        } else {
-            if (target.type === "receivable" || target.type === "payable") { 
-                const relatedRepayments = state.finances.filter(f => f.targetDebtId === id); 
-                if (relatedRepayments.length > 0) { if (!confirm("此紀錄包含已還款紀錄，確定要連帶刪除嗎？")) return; state.finances = state.finances.filter(f => f.targetDebtId !== id); } 
-                else { if (!confirm("確定刪除此紀錄？")) return; } 
-            } else { if (!confirm("確定刪除此紀錄？")) return; }
-        }
-
+    // 將真實刪除的邏輯封裝成一個小函數，方便後續呼叫
+    const proceedDelete = () => {
         if (target.subCat === "還款" && target.targetDebtId) { 
-            const m = state.finances.find(f => f.id === target.targetDebtId); if (m && m.remaining !== undefined) m.remaining = Math.round(m.remaining + target.amount); 
+            const m = state.finances.find(f => f.id === target.targetDebtId); 
+            if (m && m.remaining !== undefined) m.remaining = Math.round(m.remaining + target.amount); 
         }
-        state.finances = state.finances.filter(f => f.id !== id); saveToStorage(); renderFinances(); showToast("已刪除紀錄");
-    } catch (e) { console.error("刪除紀錄失敗:", e); showToast("刪除失敗", "error"); }
-}
+        state.finances = state.finances.filter(f => f.id !== id); 
+        saveToStorage(); renderFinances(); showToast("已刪除紀錄");
+    };
+
+    if (target.subCat === "還款") {
+        if (target.isPending) { 
+            proceedDelete(); 
+        } else if (target.linkedFriendId && currentUser) {
+            showConfirm("此為連線還款紀錄，確定發送刪除請求？", async () => {
+                await supabaseClient.from('user_messages').insert({ 
+                    sender_id: currentUser.id, receiver_id: target.linkedFriendId, type: 'delete_repay_request', 
+                    payload: { sourceId: target.sharedId || target.id, targetDebtId: target.targetDebtId, amount: target.amount } 
+                });
+                showToast("已發送還款刪除請求，待對方同意後同步刪除！"); 
+            });
+        } else {
+            showConfirm("確定刪除此還款紀錄？主借款金額將會復原。", proceedDelete);
+        }
+    } else if (isShared && isCreditor && target.linkedFriendId && currentUser) {
+        showConfirm("此為連線紀錄，確定發送刪除請求？（將連帶刪除相關還款紀錄）", async () => {
+            await supabaseClient.from('user_messages').insert({ 
+                sender_id: currentUser.id, receiver_id: target.linkedFriendId, type: 'delete_request', 
+                payload: { sourceId: id, targetDebtId: target.targetDebtId, amount: target.amount } 
+            });
+            showToast("已發送刪除請求，待對方同意後同步刪除！"); 
+        });
+    } else {
+        if (target.type === "receivable" || target.type === "payable") { 
+            const relatedRepayments = state.finances.filter(f => f.targetDebtId === id); 
+            if (relatedRepayments.length > 0) { 
+                showConfirm("此紀錄包含已還款紀錄，確定要連帶刪除嗎？", () => {
+                    state.finances = state.finances.filter(f => f.targetDebtId !== id);
+                    proceedDelete();
+                });
+            } else { 
+                showConfirm("確定刪除此紀錄？", proceedDelete);
+            } 
+        } else { 
+            showConfirm("確定刪除此紀錄？", proceedDelete);
+        }
+    }
+};
 
 function renderFinances() {
     const tbody = document.getElementById("finance-body"); 
@@ -3614,7 +4030,11 @@ function renderFinances() {
             
             const strippedParentCat = (i.parentCat || "").replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}]\s*/u, '');
             
-            tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}</td><td><span class="${tl.c}">${tl.n}</span></td><td><strong>${escapeHtml(strippedParentCat)}</strong> <span style="color:var(--text-muted);">/ ${escapeHtml(i.subCat)}</span> ${i.isHidden?'<span class="tag-hidden">已隱藏</span>':''}</td><td><strong style="color:${(i.type==='income'||i.type==='receivable')?'#10b981':'#ef4444'};">${dAmt}</strong></td><td>${escapeHtml(i.notes||"-")}</td><td>${ex}</td>`;
+            tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}<br><span class="${tl.c}" style="display:inline-block; margin-top:4px;">${tl.n}</span></td>
+                <td><strong>${escapeHtml(strippedParentCat)}</strong> <span style="color:var(--text-muted);">/ ${escapeHtml(i.subCat)}</span> ${i.isHidden?'<span class="tag-hidden">已隱藏</span>':''}</td>
+                <td><strong style="color:${(i.type==='income'||i.type==='receivable')?'#10b981':'#ef4444'};">${dAmt}</strong></td>
+                <td>${escapeHtml(i.notes||"-")}</td>
+                <td>${ex}</td>`;
             fragment.appendChild(tr);
         });
     }
@@ -3695,12 +4115,19 @@ function saveRecurringRecord() {
 }
 
 function deleteRecurringRecord(id) { 
-    if (confirm("確定刪除此設定？")) { state.recurringFinances = state.recurringFinances.filter(r => r.id !== id); saveToStorage(); openRecurringModal(); showToast("已刪除設定"); } 
+    showConfirm("確定刪除此自動收支設定？", () => { 
+        state.recurringFinances = state.recurringFinances.filter(r => r.id !== id); 
+        saveToStorage(); openRecurringModal(); showToast("已刪除設定"); 
+    }); 
 }
 
 function openCategoryManageModal() { document.getElementById("cat-manage-type").value = "expense"; renderCategoryManageList(); document.getElementById("category-manage-modal").classList.add("active"); }
 function resetCategoriesToDefault() { 
-    if (confirm("恢復預設？")) { state.customCategories = structuredClone(DEFAULT_CATEGORIES); state.categoryOrder = null; saveToStorage(); renderCategoryManageList(); renderFinances(); showToast("已恢復預設類別"); } 
+    showConfirm("確定恢復預設類別？(您自訂的類別將會消失)", () => { 
+        state.customCategories = structuredClone(DEFAULT_CATEGORIES); 
+        state.categoryOrder = null; 
+        saveToStorage(); renderCategoryManageList(); renderFinances(); showToast("已恢復預設類別"); 
+    }); 
 }
 
 function renderCategoryManageList() { 
@@ -3744,7 +4171,12 @@ function confirmCatMerge() {
     (state.recurringFinances || []).forEach(r => { if (r.parentCat === p && r.subCat === s) r.subCat = ts; }); 
     c[t][p].splice(i, 1); saveToStorage(); renderCategoryManageList(); renderFinances(); closeModal("cat-merge-modal"); 
 }
-function catDelete(t, p, i) { if (confirm("刪除此子類別？")) { getCategories()[t][p].splice(i, 1); saveToStorage(); renderCategoryManageList(); renderFinances(); } }
+function catDelete(t, p, i) { 
+    showConfirm("確定刪除此子類別？", () => { 
+        getCategories()[t][p].splice(i, 1); 
+        saveToStorage(); renderCategoryManageList(); renderFinances(); 
+    }); 
+}
 
 // ========================================================
 // 好友互動與通知、便利貼 (其他補充函式)
@@ -3768,35 +4200,73 @@ function exitFriendView() {
     const fab = document.getElementById("main-fab-container"); if (fab) fab.style.display = "flex";
     renderSchedule(); 
 }
-window.deleteStickyNote = async function() {
+window.deleteStickyNote = function() {
     if (!currentReadingNoteId) return;
-    const success = await deleteMessage(currentReadingNoteId);
-    if (success) {
-        closeModal('read-note-modal');
-        currentReadingNoteId = null;
-    }
+    deleteMessage(currentReadingNoteId);
 };
 function toggleIntersection() { showIntersection = document.getElementById("chk-intersection").checked; renderSchedule(); }
-function isMyTimeFree(day, startMins, endMins) {
-    const s = state.schedules.find(x => x.id === state.activeScheduleId) || state.schedules[0]; if (!s) return true;
+function isMyTimeFree(day, startMins, endMins, dateStr) {
+    const s = state.schedules.find(x => x.id === state.activeScheduleId) || state.schedules[0]; 
+    if (!s) return true;
+
+    // 共用跨日重疊檢測邏輯
+    const checkOverlap = (itemDay, sm, em) => {
+        if (sm > em) { // 發生跨日
+            // 檢查第一天 (開始日)
+            if (Number(itemDay) === day && sm < endMins && 1440 > startMins) return false;
+            // 檢查第二天 (結束日)
+            let nextDay = Number(itemDay) === 7 ? 1 : Number(itemDay) + 1;
+            if (nextDay === day && 0 < endMins && em > startMins) return false;
+        } else {
+            // 一般無跨日
+            if (Number(itemDay) === day && sm < endMins && em > startMins) return false;
+        }
+        return true;
+    };
+
+    // 1. 檢查一般節次課程
     for (let p of (s.periods || initialDefaultPeriods)) { 
         const c = (s.courses || {})[`${day}_${p.id}`]; 
         if (c && c.name && timeToMinutes(p.start) < endMins && timeToMinutes(p.end) > startMins) return false; 
     }
-    for (let t of (s.tutorings || [])) { if (Number(t.day) === day && timeToMinutes(t.startTime) < endMins && timeToMinutes(t.endTime) > startMins) return false; }
-    for (let w of (s.works || [])) { if (Number(w.day) === day && timeToMinutes(w.startTime) < endMins && timeToMinutes(w.endTime) > startMins) return false; }
-    for (let c of (s.customCourses || [])) {
-        if (Number(c.day) === day && timeToMinutes(c.startTime) < endMins && timeToMinutes(c.endTime) > startMins) return false;
-    }
+    
+    // 2. 檢查自訂課程、家教、工作 (套用跨日邏輯)
+    for (let c of (s.customCourses || [])) { if (!checkOverlap(c.day, timeToMinutes(c.startTime), timeToMinutes(c.endTime))) return false; }
+    for (let t of (s.tutorings || [])) { if (!checkOverlap(t.day, timeToMinutes(t.startTime), timeToMinutes(t.endTime))) return false; }
+    for (let w of (s.works || [])) { if (!checkOverlap(w.day, timeToMinutes(w.startTime), timeToMinutes(w.endTime))) return false; }
+    
+    // 3. 檢查臨時事件
     for (let t of (s.temporaryEvents || [])) { 
         let st = t.startTime, et = t.endTime; 
         if (t.slotType === 'noon') { st = "12:00"; et = "13:00"; } 
-        else if (t.slotType === 'period') { const spObj = (s.periods || initialDefaultPeriods).find(p => String(p.id) === String(t.periodId)); if (spObj) { st = spObj.start; et = spObj.end; } } 
-        if (Number(t.day) === day && timeToMinutes(st) < endMins && timeToMinutes(et) > startMins) return false; 
+        else if (t.slotType === 'period') { 
+            const spObj = (s.periods || initialDefaultPeriods).find(p => String(p.id) === String(t.periodId)); 
+            if (spObj) { st = spObj.start; et = spObj.end; } 
+        } 
+        if (!checkOverlap(t.day, timeToMinutes(st), timeToMinutes(et))) return false; 
+    }
+
+    // 4. 檢查調課 (Overrides) - 需要依賴 dateStr 判斷
+    if (dateStr) {
+        for (let o of (s.overrides || [])) {
+            let sm = timeToMinutes(o.startTime), em = timeToMinutes(o.endTime);
+            if (o.targetDate === dateStr) { 
+                // 當天觸發
+                if (sm > em) {
+                    if (sm < endMins && 1440 > startMins) return false;
+                } else {
+                    if (sm < endMins && em > startMins) return false;
+                }
+            } else if (sm > em) {
+                // 如果調課跨日，且跨到正在渲染的「這一天」
+                const prevDateObj = new Date(dateStr);
+                prevDateObj.setDate(prevDateObj.getDate() - 1);
+                if (o.targetDate === formatDate(prevDateObj) && 0 < endMins && em > startMins) return false;
+            }
+        }
     }
     return true;
 }
-
 function openPrivacyMaskModal() {
     const sch = getActiveSchedule(); 
     const listEl = document.getElementById('privacy-mask-list'); 
@@ -4176,32 +4646,58 @@ window.resetAllSwipes = function() {
 };
 
 // ================= 成績點擊底部 Modal =================
+
+window.currentSpecialScore = null;
 window.openScoreModal = function(sem, id, currentScore) {
     triggerHaptic(10);
     window.editingScoreId = { sem, id };
     const course = state.credits.semesters[sem].find(c => c.id === id);
     
     document.getElementById("score-modal-subtitle").innerText = `${course.name || '未命名科目'} · ${course.credits} 學分`;
-    document.getElementById("score-modal-input").value = currentScore === '-' ? '' : currentScore;
     
-    // 初始化 Checkbox 狀態
-    const isSpecial = ["抵免", "通過", "免修"].includes(currentScore);
-    document.getElementById("score-no-gpa-check").checked = isSpecial;
+    // 初始化狀態：分離特殊分數與純數字顯示
+    window.currentSpecialScore = null;
+    if (["抵免", "通過", "免修"].includes(currentScore)) {
+        window.currentSpecialScore = currentScore;
+        document.getElementById("score-modal-input").value = "";
+        document.getElementById("score-no-gpa-check").checked = true;
+    } else {
+        document.getElementById("score-modal-input").value = currentScore === '-' ? '' : currentScore;
+        document.getElementById("score-no-gpa-check").checked = false;
+    }
+    
     window.toggleSpecialScoreBtns();
-    
+    window.updateSpecialScoreUI();
     document.getElementById("score-input-modal").classList.add("active");
 };
 
 window.toggleSpecialScoreBtns = function() {
     const isChecked = document.getElementById("score-no-gpa-check").checked;
     document.getElementById("special-score-btns").style.display = isChecked ? "flex" : "none";
-    if (!isChecked && ["抵免", "通過", "免修"].includes(document.getElementById("score-modal-input").value)) {
-        document.getElementById("score-modal-input").value = ""; 
-    }
+    if (!isChecked) window.currentSpecialScore = null;
+    window.updateSpecialScoreUI();
 };
 
 window.setSpecialScore = function(val) {
-    document.getElementById("score-modal-input").value = val;
+    if (window.currentSpecialScore === val) {
+        window.currentSpecialScore = null;
+    } else {
+        window.currentSpecialScore = val;
+        document.getElementById("score-modal-input").value = ""; // 點選按鈕時清空數字
+    }
+    window.updateSpecialScoreUI();
+};
+
+window.updateSpecialScoreUI = function() {
+    document.querySelectorAll("#special-score-btns .btn").forEach(btn => {
+        if (btn.innerText === window.currentSpecialScore) {
+            btn.classList.add("active");
+            btn.classList.remove("btn-secondary");
+        } else {
+            btn.classList.remove("active");
+            btn.classList.add("btn-secondary");
+        }
+    });
 };
 
 window.openScoreInfoModal = function() {
@@ -4209,8 +4705,20 @@ window.openScoreInfoModal = function() {
 };
 
 window.saveScoreModal = function() {
-    const val = document.getElementById("score-modal-input").value.trim();
+    let val = document.getElementById("score-modal-input").value.trim();
     const { sem, id } = window.editingScoreId;
+    
+    // 如果勾選了不計績點且有選擇特殊燈號，優先使用該數值
+    if (document.getElementById("score-no-gpa-check").checked && window.currentSpecialScore) {
+        val = window.currentSpecialScore;
+    } else if (val !== "") {
+        // 限定成績必須在 0~100 之間
+        const scoreNum = parseFloat(val);
+        if (isNaN(scoreNum) || scoreNum < 0 || scoreNum > 100) {
+            showToast("請輸入 0~100 之間的有效數字", "error");
+            return;
+        }
+    }
     
     const course = state.credits.semesters[sem].find(c => c.id === id);
     if (!course) return;
@@ -4218,7 +4726,6 @@ window.saveScoreModal = function() {
     course.score = val;
     const scoreNum = parseFloat(val);
 
-    // 依據內容判定等第與 GPA
     if (!isNaN(scoreNum)) {
         const scale = state.credits.gradeScale.find(s => scoreNum >= s.min && scoreNum <= s.max);
         if (scale) {
@@ -4226,8 +4733,8 @@ window.saveScoreModal = function() {
             course.gpa = scale.gpa;
         }
     } else if (["抵免", "通過", "免修"].includes(val)) {
-        course.grade = val; // 特殊字眼顯示於等第欄
-        course.gpa = "";    // 不計入 GPA
+        course.grade = val; 
+        course.gpa = "";    
     } else {
         course.grade = "";
         course.gpa = "";
@@ -4341,14 +4848,14 @@ window.confirmAddSemester = function() {
 
 window.deleteCreditSemester = function(semName) {
     if (!semName) return;
-    if (confirm(`確定要刪除「${semName}」及其內的所有成績嗎？`)) {
+    showConfirm(`確定要刪除「${semName}」及其內的所有成績嗎？`, () => {
         state.credits.semesterOrder = state.credits.semesterOrder.filter(s => s !== semName);
         delete state.credits.semesters[semName];
         window.currentCreditSemester = state.credits.semesterOrder.length > 0 ? state.credits.semesterOrder[0] : null;
         saveToStorage();
         renderCreditCalculator();
         showToast(`已刪除 ${semName}`);
-    }
+    });
 };
 
 window.addCreditCourse = function(sem) {
@@ -4363,12 +4870,12 @@ window.addCreditCourse = function(sem) {
 };
 
 window.deleteCreditCourse = function(sem, id) {
-    if (confirm("確定刪除此課程紀錄？")) {
+    showConfirm("確定刪除此課程紀錄？", () => {
         state.credits.semesters[sem] = state.credits.semesters[sem].filter(c => c.id !== id);
         saveToStorage();
         renderCreditCalculator();
         showToast("已刪除");
-    }
+    });
 };
 
 window.openImportScheduleModal = function(sem) {
@@ -4400,36 +4907,36 @@ window.confirmImportSchedule = function(sem, schId) {
     const sch = state.schedules.find(s => s.id === schId);
     if (!sch) return;
     
-    if (!confirm(`確定要將「${sch.title}」的課程匯入到「${sem}」嗎？`)) return;
-    
-    const courses = Object.values(sch.courses || {}).filter(c => c && c.name);
-    const customs = (sch.customCourses || []).filter(c => c && c.name);
-    const allCourses = [...courses, ...customs];
-    
-    if (!state.credits.semesters[sem]) state.credits.semesters[sem] = [];
-    const existingNames = new Set(state.credits.semesters[sem].map(c => c.name));
-    let addCount = 0;
-    
-    allCourses.forEach(c => {
-        if (existingNames.has(c.name)) return; 
-        existingNames.add(c.name);
+    showConfirm(`確定要將「${sch.title}」的課程匯入到「${sem}」嗎？`, () => {
+        const courses = Object.values(sch.courses || {}).filter(c => c && c.name);
+        const customs = (sch.customCourses || []).filter(c => c && c.name);
+        const allCourses = [...courses, ...customs];
         
-        let mappedCat = c.type || "系必修";
-        if (!state.credits.domains.some(d => d.name === mappedCat)) {
-            mappedCat = state.credits.domains[0]?.name || "自訂";
-        }
+        if (!state.credits.semesters[sem]) state.credits.semesters[sem] = [];
+        const existingNames = new Set(state.credits.semesters[sem].map(c => c.name));
+        let addCount = 0;
         
-        state.credits.semesters[sem].push({
-            id: "cc_" + Date.now() + Math.floor(Math.random()*1000),
-            name: c.name, category: mappedCat, credits: 2, score: "", grade: "", gpa: ""
+        allCourses.forEach(c => {
+            if (existingNames.has(c.name)) return; 
+            existingNames.add(c.name);
+            
+            let mappedCat = c.type || "系必修";
+            if (!state.credits.domains.some(d => d.name === mappedCat)) {
+                mappedCat = state.credits.domains[0]?.name || "自訂";
+            }
+            
+            state.credits.semesters[sem].push({
+                id: "cc_" + Date.now() + Math.floor(Math.random()*1000),
+                name: c.name, category: mappedCat, credits: 2, score: "", grade: "", gpa: ""
+            });
+            addCount++;
         });
-        addCount++;
+        
+        saveToStorage();
+        renderCreditCalculator();
+        closeModal("import-schedule-modal");
+        showToast(addCount > 0 ? `成功匯入 ${addCount} 門課程` : "無新課程可匯入");
     });
-    
-    saveToStorage();
-    renderCreditCalculator();
-    closeModal("import-schedule-modal");
-    showToast(addCount > 0 ? `成功匯入 ${addCount} 門課程` : "無新課程可匯入");
 };
 // ================= 等第設定 =================
 window.openGradeScaleModal = function() {
@@ -4463,12 +4970,12 @@ window.saveGradeScale = function() {
 };
 
 window.resetGradeScale = function() {
-    if(confirm("確定還原為預設等第表嗎？")) {
+    showConfirm("確定還原為預設等第表嗎？", () => {
         state.credits.gradeScale = structuredClone(DEFAULT_GRADE_SCALE);
         saveToStorage();
         openGradeScaleModal();
         showToast('已還原預設');
-    }
+    });
 };
 
 // ================= 設定領域與目標 =================
@@ -4538,11 +5045,11 @@ window.addCreditDomain = function() {
 };
 
 window.deleteCreditDomain = function(idx) {
-    if (confirm("確定刪除此領域？")) {
+    showConfirm("確定刪除此領域？", () => {
         state.credits.domains.splice(idx, 1);
         saveToStorage();
         window.renderSettingsDomainList();
-    }
+    });
 };
 
 window.saveCreditSettings = function() {
