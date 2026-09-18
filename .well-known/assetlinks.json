@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "dev.pages.uni_pocket.twa",
-        "sha256_cert_fingerprints": ["D3:B3:5B:D8:69:81:E1:51:83:51:CE:F0:D7:B6:51:D5:C2:30:AE:99:41:EA:A5:A6:A3:05:61:85:C8:40:EC:8C"]
+        "sha256_cert_fingerprints": ["59:2F:B1:EA:38:5D:DE:05:0A:FD:FA:13:8E:4F:3C:7F:8D:98:03:6A:A2:FC:08:37:4A:B8:E8:E0:EA:24:55:1B"]
       }
     }]
