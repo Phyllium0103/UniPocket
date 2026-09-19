@@ -1,19 +1,82 @@
-/* ================== 自訂字型宣告 ================== */
-@font-face { font-family: 'Unifont'; src: url('./fonts/unifont_jp-18.0.01.otf'); font-display: swap; }
-@font-face { font-family: 'NotoSans'; src: url('./fonts/NotoSansTC-VariableFont_wght.ttf'); font-display: swap; }
-@font-face { font-family: 'NotoSerif'; src: url('./fonts/NotoSerifTC-VariableFont_wght.ttf'); font-display: swap; }
-@font-face { font-family: 'KaiTi'; src: url('./fonts/TW-Kai-98_1.ttf'); font-display: swap; }
-@font-face { font-family: 'KaiTi-Ext'; src: url('./fonts/TW-Kai-Ext-B-98_1.ttf'); font-display: swap; }
-@font-face { font-family: 'Zhaohua'; src: url('./fonts/ZhaohuaTypeWriter.ttf'); font-display: swap; }
-@font-face { font-family: 'LXGWWenKai'; src: url('./fonts/LXGWWenKaiTC-Regular.ttf'); font-display: swap; }
-@font-face { font-family: 'StarLoveMarker'; src: url('./fonts/StarLoveMarker.ttf'); font-display: swap; }
-@font-face { font-family: 'GenRyuMin'; src: url('./fonts/GenRyuMin2-R.ttf'); font-display: swap; }
-@font-face { font-family: 'Openhuninn'; src: url('./fonts/jf-openhuninn-2.1.ttf'); font-display: swap; }
-@font-face { font-family: 'ToneOZ'; src: url('./fonts/ToneOZ-Tsuipita-TC.ttf'); font-display: swap; }
-@font-face { font-family: 'ChenYuluoyan'; src: url('./fonts/ChenYuluoyan-2.0-Thin.ttf'); font-display: swap; }
-@font-face { font-family: 'KingHwa'; src: url('./fonts/KingHwa_OldSong.ttf'); font-display: swap; }
-@font-face { font-family: '851tegaki'; src: url('./fonts/851tegaki_zatsu_normal_0883.ttf'); font-display: swap; }
+在目前的 style.css 中，頂端的宣告仍然全部指向舊的 .ttf 與 .otf 檔案，尚未改為 .woff2。   瀏覽器需要讀取正確的副檔名與 format('woff2') 宣告，字型才能順利套用。需要修正的完整 CSS 內容請打開 style.css，將最頂端「自訂字型宣告」到 * 選擇器的區塊替換為以下內容：   CSS/* ================== 自訂字型宣告 (WOFF2 高效版) ================== */
+@font-face { 
+  font-family: 'Unifont'; 
+  src: url('./fonts/unifont_jp-18.0.01.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'NotoSans'; 
+  src: url('./fonts/NotoSansTC-VariableFont_wght.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'NotoSerif'; 
+  src: url('./fonts/NotoSerifTC-VariableFont_wght.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'KaiTi'; 
+  src: url('./fonts/TW-Kai-98_1.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'KaiTi-Ext'; 
+  src: url('./fonts/TW-Kai-Ext-B-98_1.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'Zhaohua'; 
+  src: url('./fonts/ZhaohuaTypeWriter.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'LXGWWenKai'; 
+  src: url('./fonts/LXGWWenKaiTC-Regular.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'StarLoveMarker'; 
+  src: url('./fonts/StarLoveMarker.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'GenRyuMin'; 
+  src: url('./fonts/GenRyuMin2-R.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'Openhuninn'; 
+  src: url('./fonts/jf-openhuninn-2.1.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'ToneOZ'; 
+  src: url('./fonts/ToneOZ-Tsuipita-TC.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'ChenYuluoyan'; 
+  src: url('./fonts/ChenYuluoyan-2.0-Thin.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'KingHwa'; 
+  src: url('./fonts/KingHwa_OldSong.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: '851tegaki'; 
+  src: url('./fonts/851tegaki_zatsu_normal_0883.woff2') format('woff2'); 
+  font-display: swap; 
+}
 
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  font-family: var(--current-font, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif); 
+  -webkit-tap-highlight-color: transparent;
+}
 * { 
   box-sizing: border-box; 
   margin: 0; 
