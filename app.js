@@ -3779,7 +3779,7 @@ function renderBillings() {
                                 </div>
                             </td>
                             <td style="white-space: nowrap; width: 1%;"><strong style="color:var(--primary);">$${record.total}</strong></td>
-                            <td style="text-align:center; width: 1%;"><span style="font-size: 1.2rem;">${statusIcon}</span></td>
+                            <td style="text-align:center; width: 1%;"><span style="font-size: 0.9rem;">${statusIcon}</span></td>
                             <td style="word-break: break-all;">${escapeHtml(record.notes || "-")}</td>
                             <td style="text-align:center;"><button class="gear-action-btn" onclick="openBillingActionMenu(${idx}, ${isWork})">⚙️</button></td>`;
             fragment.appendChild(tr);
