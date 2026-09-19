@@ -1,7 +1,7 @@
 在目前的 style.css 中，頂端的宣告仍然全部指向舊的 .ttf 與 .otf 檔案，尚未改為 .woff2。   瀏覽器需要讀取正確的副檔名與 format('woff2') 宣告，字型才能順利套用。需要修正的完整 CSS 內容請打開 style.css，將最頂端「自訂字型宣告」到 * 選擇器的區塊替換為以下內容：   CSS/* ================== 自訂字型宣告 (WOFF2 高效版) ================== */
 @font-face { 
   font-family: 'Unifont'; 
-  src: url('./fonts/unifont_jp-18.0.01.woff2') format('woff2'); 
+  src: url('./fonts/unifont_jp.woff2') format('woff2'); 
   font-display: swap; 
 }
 @font-face { 
@@ -56,7 +56,7 @@
 }
 @font-face { 
   font-family: 'ChenYuluoyan'; 
-  src: url('./fonts/ChenYuluoyan-2.0-Thin.woff2') format('woff2'); 
+  src: url('./fonts/ChenYuluoyan-Thin.woff2') format('woff2'); 
   font-display: swap; 
 }
 @font-face { 
