@@ -1054,8 +1054,7 @@ thead .col-time {
 .friend-email { font-size: 0.7rem; color: var(--text-muted); }
 .msg-card { background: var(--today-header-bg); border: 1px solid var(--primary); padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.8rem; }
 .common-empty { background-color: rgba(34, 197, 94, 0.25) !important; border: 2px dashed #22c55e !important; box-shadow: inset 0 0 5px rgba(34, 197, 94, 0.5); }
-.viewing-friend-banner { background: #f59e0b; color: white; font-weight: bold; text-align: center; padding: 6px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
-
+.viewing-friend-banner { background: var(--primary); color: white; font-weight: bold; text-align: center; padding: 6px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
 /* ================== Error Toast Notification ================== */
 .toast {
   position: fixed;

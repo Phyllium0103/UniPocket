@@ -192,15 +192,33 @@ let state = createDefaultState();
 // 工具與資料函數
 // ========================================================
 
-window.showConfirm = function(msg, onConfirm, okText="確定", isDanger=true) {
+window.showConfirm = function(msg, onConfirm, okText="確定", isDanger=true, hideCancel=false, hideTitle=false, okBtnClass="") {
     document.getElementById("confirm-modal-message").innerText = msg;
     const okBtn = document.getElementById("confirm-btn-ok");
     okBtn.innerText = okText;
-    okBtn.className = isDanger ? "btn btn-danger" : "btn btn-warning";
+    
+    // 若有傳入自訂 class，則覆蓋預設的紅/橘色樣式
+    if (okBtnClass) {
+        okBtn.className = okBtnClass;
+    } else {
+        okBtn.className = isDanger ? "btn btn-danger" : "btn btn-warning";
+    }
+    
     okBtn.onclick = () => {
         closeModal("custom-confirm-modal");
         if(onConfirm) onConfirm();
     };
+    
+    const titleEl = document.getElementById("confirm-modal-title");
+    if (titleEl) {
+        titleEl.style.display = hideTitle ? "none" : "block";
+        titleEl.innerText = "確認操作";
+    }
+    const cancelBtn = document.querySelector("#custom-confirm-modal .btn-secondary");
+    if (cancelBtn) {
+        cancelBtn.style.display = hideCancel ? "none" : "inline-flex";
+    }
+
     document.getElementById("custom-confirm-modal").classList.add("active");
 };
 
@@ -1169,9 +1187,9 @@ window.onFontChange = function(fontVal) {
     triggerHaptic(15);
     state.fontFamily = fontVal;
     
-    // 如果選擇楷體，跳出規定的提示訊息
     if (fontVal === "KaiTi") {
-        showConfirm("數位發展部，CNS11643 中文標準交換碼全字庫網站，https://www.cns11643.gov.tw", null, "我知道了", false);
+        // 第 7 個參數傳入 "btn btn-secondary"，讓按鈕變為透明底色普通樣式
+        showConfirm("數位發展部，CNS11643 中文標準交換碼全字庫網站，https://www.cns11643.gov.tw", null, "確認", false, true, true, "btn btn-secondary");
     }
     
     applyFont();
@@ -3751,18 +3769,17 @@ function renderBillings() {
             const dateParts = dateStr.split('-');
             const dateHtml = dateParts.length === 3 ? `${dateParts[0]}<br>${dateParts[1]}-${dateParts[2]}` : dateStr;
 
-            // 將狀態文字替換為打勾或叉叉的圖示
+            // 將狀態文字替換為打勾或叉叉的圖示 (取消原本的外框樣式 class)
             const statusIcon = record.status === "paid" ? "✔️" : "❌";
-            const statusClass = record.status === "paid" ? "tag-paid" : "tag-unpaid";
 
             tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}</td>
-                            <td><strong>${escapeHtml(isWork ? record.name : record.student)}</strong></td>
+                            <td style="min-width: 3em;"><strong>${escapeHtml(isWork ? record.name : record.student)}</strong></td>
                             <td><strong style="color:var(--primary);">$${record.total}</strong></td>
-                            <td style="text-align:center;"><span class="${statusClass}" style="display:inline-flex; align-items:center; justify-content:center; padding:2px 6px;">${statusIcon}</span></td>
+                            <td style="text-align:center;"><span style="display:inline-flex; align-items:center; justify-content:center; font-size: 1.1rem; padding:2px 6px;">${statusIcon}</span></td>
                             <td>${escapeHtml(record.notes || "-")}</td>
                             <td style="text-align:center;"><button class="gear-action-btn" onclick="openBillingActionMenu(${idx}, ${isWork})">⚙️</button></td>`;
             fragment.appendChild(tr);
-        }); 
+        });
     }
     tbody.innerHTML = ""; tbody.appendChild(fragment);
     
