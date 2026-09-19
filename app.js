@@ -3773,10 +3773,14 @@ function renderBillings() {
             const statusIcon = record.status === "paid" ? "✔️" : "❌";
 
             tr.innerHTML = `<td style="line-height:1.2;">${dateHtml}</td>
-                            <td style="min-width: 3em;"><strong>${escapeHtml(isWork ? record.name : record.student)}</strong></td>
-                            <td><strong style="color:var(--primary);">$${record.total}</strong></td>
-                            <td style="text-align:center;"><span style="display:inline-flex; align-items:center; justify-content:center; font-size: 1.1rem; padding:2px 6px;">${statusIcon}</span></td>
-                            <td>${escapeHtml(record.notes || "-")}</td>
+                            <td style="width: 1%;">
+                                <div style="width: 3.5em; margin: 0 auto; text-align: center; white-space: normal; word-break: break-all;">
+                                    <strong>${escapeHtml(isWork ? record.name : record.student)}</strong>
+                                </div>
+                            </td>
+                            <td style="white-space: nowrap; width: 1%;"><strong style="color:var(--primary);">$${record.total}</strong></td>
+                            <td style="text-align:center; width: 1%;"><span style="font-size: 1.2rem;">${statusIcon}</span></td>
+                            <td style="word-break: break-all;">${escapeHtml(record.notes || "-")}</td>
                             <td style="text-align:center;"><button class="gear-action-btn" onclick="openBillingActionMenu(${idx}, ${isWork})">⚙️</button></td>`;
             fragment.appendChild(tr);
         });
