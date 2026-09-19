@@ -68,6 +68,21 @@
   src: url('./fonts/851tegaki_zatsu_normal_0883.woff2') format('woff2'); 
   font-display: swap; 
 }
+@font-face { 
+  font-family: 'Yozai'; 
+  src: url('./fonts/Yozai-Regular.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'ThePeakFontBeta'; 
+  src: url('./fonts/ThePeakFontBeta_V0_102.woff2') format('woff2'); 
+  font-display: swap; 
+}
+@font-face { 
+  font-family: 'KurewaGothicCjkTc'; 
+  src: url('./fonts/KurewaGothicCjkTc-Regular.woff2') format('woff2'); 
+  font-display: swap; 
+}
 
 * { 
   box-sizing: border-box; 
