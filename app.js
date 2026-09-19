@@ -160,6 +160,7 @@ function createDefaultState() {
         // ... (保持原本的 themeMode, themeStyle 等設定)
         themeMode: "light",
         themeStyle: "light-swiss-blue",
+        fontFamily: "default",
         lastLightStyle: "light-swiss-blue",
         lastDarkStyle: "dark-tokyo-night",
         showLatePeriods: false,
@@ -999,6 +1000,7 @@ async function pullCloudData() {
             saveToStorage();
             
             applyTheme();
+            applyFont();
             if(typeof updatePresetDropdowns === 'function') updatePresetDropdowns();
             if(typeof checkRecurringFinances === 'function') checkRecurringFinances();
             updateSettingsUI();
@@ -1068,6 +1070,10 @@ function updateSettingsUI() {
     
     const ta = document.getElementById("settings-text-align");
     if (ta) ta.value = state.textAlign || "center";
+    
+    // 🌟 加入這兩行同步字型選單
+    const fontSel = document.getElementById("settings-font-select");
+    if (fontSel) fontSel.value = state.fontFamily || "default";
 }
 function toggle24HourMode() { 
     triggerHaptic(20); 
@@ -1144,6 +1150,33 @@ function initThemeDropdown() {
     select.innerHTML = "";
     select.appendChild(fragment);
 }
+
+window.applyFont = function() {
+    const root = document.documentElement;
+    if (!state.fontFamily || state.fontFamily === "default") {
+        // 清除變數，恢復預設
+        root.style.removeProperty("--current-font");
+    } else if (state.fontFamily === "KaiTi") {
+        // 楷體需要同時宣告擴展字面作為備用
+        root.style.setProperty("--current-font", `'KaiTi', 'KaiTi-Ext', sans-serif`);
+    } else {
+        root.style.setProperty("--current-font", `'${state.fontFamily}', sans-serif`);
+    }
+};
+
+// 處理選單切換事件
+window.onFontChange = function(fontVal) {
+    triggerHaptic(15);
+    state.fontFamily = fontVal;
+    
+    // 如果選擇楷體，跳出規定的提示訊息
+    if (fontVal === "KaiTi") {
+        showConfirm("數位發展部，CNS11643 中文標準交換碼全字庫網站，https://www.cns11643.gov.tw", null, "我知道了", false);
+    }
+    
+    applyFont();
+    saveToStorage();
+};
 
 function toggleThemeMode() { 
     triggerHaptic(20); 
@@ -1889,6 +1922,7 @@ function init() {
     if (!document.getElementById("fin-month-filter").value) document.getElementById("fin-month-filter").value = ym;
     
     updateSettingsUI();
+    applyFont();
     if(typeof updatePresetDropdowns === 'function') updatePresetDropdowns(); 
     if(typeof checkRecurringFinances === 'function') checkRecurringFinances(); 
     if(typeof renderSchedule === 'function') renderSchedule(); 
@@ -4876,7 +4910,7 @@ window.renderCreditCalculator = function() {
     
     document.getElementById("credit-sem-title").innerText = window.currentCreditSemester || "無學期";
 
-    let currentTotal = 0;
+    let currentTotal = 0; // 圓餅圖總進度
     let domainTotals = {};
     data.domains.forEach(d => domainTotals[d.name] = 0);
 
@@ -4886,12 +4920,12 @@ window.renderCreditCalculator = function() {
     let majorHundredScoreSum = 0, majorHundredCredSum = 0;
     let semesterTrends = [];
 
-    // 👇 新增：準備用來統計等第與總學分的變數 👇
     let gradeCredits = {};
     let totalGradedCredits = 0;
 
     const majorDomains = data.domains.filter(d => d.isMajor).map(d => d.name);
 
+    // 第一階段：計算各領域實際取得的總學分，與成績加權
     data.semesterOrder.forEach(sem => {
         let semScoreSum = 0, semCredSum = 0;
         (data.semesters[sem] || []).forEach(c => {
@@ -4900,29 +4934,43 @@ window.renderCreditCalculator = function() {
             const sc = parseFloat(scStr);
             const gpa = parseFloat(c.gpa);
             
-            const isPass = !isNaN(sc) ? sc >= 60 : (["抵免", "通過", "免修"].includes(c.score) || (c.gpa && parseFloat(c.gpa) > 0));
-            if (isPass || (isNaN(sc) && !c.gpa && cr > 0)) {
-                currentTotal += cr;
+            // 嚴格判斷是否取得學分：
+            let isEarned = false;
+            if (c.score === "抵免" || c.score === "通過") {
+                isEarned = true; // 抵免、通過：取得學分
+            } else if (c.score === "免修") {
+                isEarned = false; // 免修：嚴格不取得學分
+            } else if (!isNaN(sc)) {
+                isEarned = sc >= 60;
+            } else if (c.gpa && parseFloat(c.gpa) > 0) {
+                isEarned = true;
+            } else if (isNaN(sc) && !c.gpa && cr > 0 && scStr === "") {
+                isEarned = true;
+            }
+
+            if (isEarned) {
                 if (domainTotals[c.category] !== undefined) domainTotals[c.category] += cr;
             }
 
-            if (!isNaN(gpa) && cr > 0) {
-                const weighted = gpa * cr;
-                semScoreSum += weighted; semCredSum += cr;
-                totalScoreSum += weighted; totalCredSum += cr;
-                if (majorDomains.includes(c.category)) {
-                    majorScoreSum += weighted; majorCredSum += cr;
+            // 不計入分數與 GPA 的判斷 (抵免、通過、免修 皆排除)
+            if (!["抵免", "通過", "免修"].includes(c.score)) {
+                if (!isNaN(gpa) && cr > 0) {
+                    const weighted = gpa * cr;
+                    semScoreSum += weighted; semCredSum += cr;
+                    totalScoreSum += weighted; totalCredSum += cr;
+                    if (majorDomains.includes(c.category)) {
+                        majorScoreSum += weighted; majorCredSum += cr;
+                    }
                 }
-            }
-            if (!isNaN(sc) && cr > 0) {
-                const wHundred = sc * cr;
-                hundredScoreSum += wHundred; hundredCredSum += cr;
-                if (majorDomains.includes(c.category)) {
-                    majorHundredScoreSum += wHundred; majorHundredCredSum += cr;
+                if (!isNaN(sc) && cr > 0) {
+                    const wHundred = sc * cr;
+                    hundredScoreSum += wHundred; hundredCredSum += cr;
+                    if (majorDomains.includes(c.category)) {
+                        majorHundredScoreSum += wHundred; majorHundredCredSum += cr;
+                    }
                 }
             }
 
-            // 👇 新增：累加該門課的「等第」與對應「學分」 👇
             if (c.grade && cr > 0 && c.grade !== "-") {
                 if (!gradeCredits[c.grade]) gradeCredits[c.grade] = 0;
                 gradeCredits[c.grade] += cr;
@@ -4931,6 +4979,16 @@ window.renderCreditCalculator = function() {
         });
         if (semCredSum > 0) {
             semesterTrends.push({ name: sem, avgScore: (semScoreSum / semCredSum).toFixed(2) });
+        }
+    });
+
+    // 計算圓餅圖的有效進度 currentTotal
+    data.domains.forEach(d => {
+        const tgt = Number(d.target) || 0;
+        const cur = domainTotals[d.name] || 0;
+        // 只算有目標學分的，且超過目標學分的不記錄在內
+        if (tgt > 0) {
+            currentTotal += Math.min(cur, tgt);
         }
     });
 
@@ -4964,9 +5022,7 @@ window.renderCreditCalculator = function() {
     });
     html += `</div><div class="credit-chart-container" style="border:none; padding:0; background:transparent;">${getCreditTrendSVG(semesterTrends)}</div>`;
 
-    // 👇 新增：等第分佈長條圖 👇
     if (totalGradedCredits > 0) {
-        // 設定標準的等第排序順序，確保圖表從 A+ 開始排下來
         const standardOrder = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "E", "F", "X", "抵免", "通過", "免修"];
         const sortedGrades = Object.keys(gradeCredits).sort((a, b) => {
             let idxA = standardOrder.indexOf(a);
@@ -4983,7 +5039,6 @@ window.renderCreditCalculator = function() {
             const cr = gradeCredits[grade];
             const pct = (cr / totalGradedCredits) * 100;
             
-            // 替不同的等第設定顏色 (不及格為紅色，特殊分數為綠色)
             let barColor = "var(--primary)";
             if (["D", "E", "F", "X"].includes(grade)) barColor = "#ef4444";
             else if (["通過", "抵免", "免修"].includes(grade)) barColor = "#10b981";
@@ -5001,13 +5056,56 @@ window.renderCreditCalculator = function() {
         html += `</div>`;
     }
 
-    // 單一學期課程清單與左滑刪除
     let sem = window.currentCreditSemester;
     if (sem) {
         const courses = data.semesters[sem] || [];
+        
+        let semEarnedCreds = 0; 
+        let semGpaSum = 0, semGpaCreds = 0;
+        let semScoreSum = 0, semScoreCreds = 0;
+
+        courses.forEach(c => {
+            const cr = parseFloat(c.credits) || 0;
+            const scStr = String(c.score || '').trim();
+            const sc = parseFloat(scStr);
+            const gpa = parseFloat(c.gpa);
+
+            let isEarned = false;
+            if (c.score === "抵免" || c.score === "通過") {
+                isEarned = true;
+            } else if (c.score === "免修") {
+                isEarned = false;
+            } else if (!isNaN(sc)) {
+                isEarned = sc >= 60;
+            } else if (c.gpa && parseFloat(c.gpa) > 0) {
+                isEarned = true;
+            } else if (isNaN(sc) && !c.gpa && cr > 0 && scStr === "") {
+                isEarned = true;
+            }
+            
+            if (isEarned) {
+                semEarnedCreds += cr;
+            }
+
+            if (!["抵免", "通過", "免修"].includes(c.score)) {
+                if (!isNaN(gpa) && cr > 0) { semGpaSum += gpa * cr; semGpaCreds += cr; }
+                if (!isNaN(sc) && cr > 0) { semScoreSum += sc * cr; semScoreCreds += cr; }
+            }
+        });
+
+        const displayGpa = semGpaCreds > 0 ? (semGpaSum / semGpaCreds).toFixed(2) : "—";
+        const displayAvg = semScoreCreds > 0 ? (semScoreSum / semScoreCreds).toFixed(1) : "—";
+
         html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin: 16px 0 8px 0;">
-                <h4 style="font-size:0.9rem; margin:0; color:var(--text);">${escapeHtml(sem)}</h4>
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin: 16px 0 8px 0;">
+                <div>
+                    <h4 style="font-size:1.05rem; margin:0 0 6px 0; color:var(--text); font-weight:bold;">${escapeHtml(sem)}</h4>
+                    <div style="display:flex; gap:8px; font-size:0.75rem; color:var(--text-muted);">
+                        <div style="background:var(--table-th-bg); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">已得學分 <span style="color:var(--text); font-weight:bold;">${semEarnedCreds}</span></div>
+                        <div style="background:var(--table-th-bg); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">績點 <span style="color:var(--primary); font-weight:bold;">${displayGpa}</span></div>
+                        <div style="background:var(--table-th-bg); padding:2px 6px; border-radius:6px; border:1px solid var(--border);">平均 <span style="color:var(--primary); font-weight:bold;">${displayAvg}</span></div>
+                    </div>
+                </div>
                 <div>
                     <button style="padding:4px 10px; border-radius:12px; font-size:0.75rem; background:transparent; color:var(--primary); border:1px solid var(--primary); cursor:pointer; font-weight:bold; outline:none;" onclick="openImportScheduleModal('${escapeJS(sem)}')">匯入課表</button>
                 </div>
@@ -5024,7 +5122,6 @@ window.renderCreditCalculator = function() {
             `;
         } else {
             html += `<div class="credit-table-container">`;
-            // Table Header (仿圖片設計)
             html += `
                 <div class="credit-table-header">
                     <div class="credit-cell" style="flex:2.5; justify-content: flex-start; padding-left:10px;">科目名稱</div>
@@ -5040,7 +5137,6 @@ window.renderCreditCalculator = function() {
                 
                 let scoreColor = "";
                 let scoreText = c.score || '-';
-                // 不及格顯示紅色
                 if (!isNaN(parseFloat(c.score)) && parseFloat(c.score) < 60) scoreColor = "color: #ef4444; border-color: #ef4444;";
                 
                 let gradeColor = "";
@@ -5082,12 +5178,11 @@ window.renderCreditCalculator = function() {
                     </div>
                 `;
             });
-            // 表格底部的統一新增按鈕
             html += `
                 <div style="text-align:center; padding: 12px; background: var(--card-bg); cursor: pointer;" onclick="addCreditCourse('${escapeJS(sem)}')">
                     <span style="color:var(--text-muted); font-size:0.85rem; font-weight:bold;">＋ 新增科目</span>
                 </div>
-            </div>`; // end of credit-table-container
+            </div>`; 
         }
         html += `<div style="text-align:center; margin-top:20px;"><button class="btn btn-secondary" style="font-size:0.75rem; background:transparent; color:#ef4444; border:1px dashed #ef4444;" onclick="deleteCreditSemester('${escapeJS(sem)}')">刪除此學期紀錄</button></div>`;
     }

@@ -238,6 +238,29 @@
     </div>
 
     <div class="settings-group">
+      <div class="settings-group-title">👁️ 顯示設定</div>
+      <div class="settings-item">
+        <span>應用程式字型</span>
+        <select id="settings-font-select" class="theme-select" style="padding:4px 8px; font-size:0.85rem; max-width: 150px;" onchange="onFontChange(this.value)">
+          <option value="default">預設字體</option>
+          <option value="851tegaki">851手寫體</option>
+          <option value="Unifont">Unifont</option>
+          <option value="StarLoveMarker">宅在家麥克筆</option>
+          <option value="ChenYuluoyan">辰宇落雁</option>
+          <option value="LXGWWenKai">芫荽</option>
+          <option value="KingHwa">京華老宋體</option>
+          <option value="NotoSans">思源宋體</option>
+          <option value="NotoSerif">思源黑體</option>
+          <option value="Openhuninn">粉圓</option>
+          <option value="Zhaohua">朝華打字機</option>
+          <option value="KaiTi">楷體</option>
+          <option value="GenRyuMin">源流明體</option>
+          <option value="ToneOZ">曉聲通秋茄</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="settings-group">
       <div class="settings-group-title">📅 課表管理</div>
       <div class="settings-item" onclick="openScheduleSelectModal()">
         <span>切換與管理課表</span>
