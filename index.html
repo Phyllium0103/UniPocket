@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
+  <!-- ================= 網頁基本與 PWA 設定 ================= -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <title>UniPocket</title>
@@ -8,6 +9,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="UniPocket">
   <meta name="theme-color" content="#0f172a">
+  
+  <!-- ================= 網站圖示與樣式載入 ================= -->
   <link rel="icon" type="image/png" sizes="192x192" href="UniPocket_png192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="./UniPocket_png512.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
@@ -15,14 +18,21 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="themes.css">
   <link rel="stylesheet" href="style.css">
+  
+  <!-- ================= 外部腳本 ================= -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
 </head>
 <body>
+
+  <!-- ================= 全域 UI 與啟動畫面 ================= -->
+  
   <!-- UniPocket 動態啟動畫面 -->
   <div id="splash-screen">
     <div class="splash-content">
       <div class="splash-icon-container">
-        <div class="clock"><div class="hand"></div></div>
+        <div class="clock">
+          <div class="hand"></div>
+        </div>
         <img src="icon.svg" alt="UniPocket Logo" class="splash-icon">
       </div>
       <h1 class="splash-title">UniPocket</h1>
@@ -32,6 +42,7 @@
   <!-- 全域錯誤與通知提示 -->
   <div id="global-toast" class="toast hidden"></div>
 
+  <!-- 頂部標頭 -->
   <header>
     <h1>UniPocket</h1>
     <div class="header-actions">
@@ -40,6 +51,7 @@
     </div>
   </header>
 
+  <!-- 同步狀態列 -->
   <div class="sync-bar">
     <div class="sync-status">
       <span class="status-dot" id="sync-dot"></span>
@@ -49,8 +61,11 @@
     <button class="btn btn-secondary" style="padding:4px 12px; border-radius:12px; font-size:0.75rem;" id="btn-auth-action" onclick="openAuthModal()">登入 / 註冊</button>
   </div>
 
-  <!-- ================= 課表檢視 ================= -->
-<main id="schedule-view">
+
+  <!-- ================= 主要畫面區塊 ================= -->
+
+  <!-- 1. 課表檢視 -->
+  <main id="schedule-view">
     <div id="friend-view-banner" class="viewing-friend-banner" style="display:none;">
       <span id="friend-view-title">正在查看好友課表</span>
       <div>
@@ -61,12 +76,16 @@
       </div>
     </div>
 
-    <!-- 調整 1：原本的 week-nav-btns 已移除，只保留週數文字並置中 -->
+    <!-- 週數導覽與學分計算機 -->
     <div class="week-nav-bar" style="justify-content: center; position: relative;">
-      <div class="week-display" id="week-range-text" onclick="document.getElementById('week-date-picker').showPicker ? document.getElementById('week-date-picker').showPicker() : document.getElementById('week-date-picker').click()" style="cursor: pointer; display: flex; align-items: center; gap: 4px; justify-content: center;">載入中... <span style="font-size:0.8rem; color:var(--primary);">📅</span></div>
+      <div class="week-display" id="week-range-text" onclick="document.getElementById('week-date-picker').showPicker ? document.getElementById('week-date-picker').showPicker() : document.getElementById('week-date-picker').click()" style="cursor: pointer; display: flex; align-items: center; gap: 4px; justify-content: center;">
+        載入中... <span style="font-size:0.8rem; color:var(--primary);">📅</span>
+      </div>
       <input type="date" id="week-date-picker" style="position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;" onchange="jumpToDate(this.value)">
       <button class="btn btn-secondary" style="position: absolute; right: 10px; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; z-index: 10;" onclick="openCreditCalculator()">學分計算機</button>
     </div>
+
+    <!-- 死線提醒橫幅 -->
     <div id="deadline-banner" class="deadline-banner" style="display:none;">
       <div class="deadline-header" onclick="toggleDeadlineList()" style="align-items:flex-start;">
         <div style="display:flex; gap:6px;">
@@ -78,6 +97,7 @@
       <div id="deadline-list" class="deadline-list"></div>
     </div>
 
+    <!-- 課表主體 -->
     <div class="timetable-container" id="timetable-touch-area">
       <table id="schedule-table">
         <thead id="schedule-head"></thead>
@@ -85,6 +105,7 @@
       </table>
     </div>
 
+    <!-- 底部週數切換 -->
     <div class="week-nav-btns" style="display: flex; justify-content: center; margin-top: 16px; margin-bottom: 12px;">
       <div class="week-nav-group">
         <button onclick="changeWeek(-1)">◀ 上週</button>
@@ -92,8 +113,6 @@
         <button onclick="changeWeek(1)">下週 ▶</button>
       </div>
     </div>
-
-    <!-- 調整 3：徹底移除了原本的 <div class="schedule-footer-banner"> -->
 
     <!-- 懸浮按鈕 FAB (課表) -->
     <div class="fab-container" id="schedule-fab-container">
@@ -108,33 +127,51 @@
     </div>
   </main>
 
-  <!-- ================= 帳務檢視 ================= -->
+  <!-- 2. 帳務檢視 -->
   <section id="billing-view" class="billing-panel">
     <div class="billing-type-bar">
       <button id="btn-billing-type-tutoring" class="billing-type-btn active" onclick="switchBillingType('tutoring')">家教帳務</button>
       <button id="btn-billing-type-work" class="billing-type-btn" onclick="switchBillingType('work')">工作帳務</button>
     </div>
+
+    <!-- 篩選列 -->
     <div class="month-filter-bar">
       <span style="font-weight:700; font-size:0.80rem;">月份：</span>
       <input type="month" id="bill-month-filter" onchange="renderBillings()">
       <button id="btn-bill-month-current" class="btn" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthCurrent()">本月</button>
       <button id="btn-bill-month-all" class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setBillingMonthAll()">全期間</button>
+      
       <span style="font-weight:700; font-size:0.80rem; margin-left:4px;">排序：</span>
       <select id="bill-sort-order" onchange="renderBillings()">
         <option value="desc">由近到遠 (新→舊)</option>
         <option value="asc">由遠到近 (舊→新)</option>
       </select>
     </div>
+
     <div class="student-filter-chips" id="student-filter-chips"></div>
+
+    <!-- 統計卡片 -->
     <div class="stats-cards">
-      <div class="stat-box"><div class="stat-title">總時數</div><div class="stat-val" id="stat-total-hours">0 小時</div></div>
-      <div class="stat-box"><div class="stat-title">預計總收入</div><div class="stat-val" id="stat-total-income">$0</div></div>
-      <div class="stat-box"><div class="stat-title" id="stat-unpaid-title">未繳清金額</div><div class="stat-val" style="color:#ef4444;" id="stat-unpaid">$0</div></div>
+      <div class="stat-box">
+        <div class="stat-title">總時數</div>
+        <div class="stat-val" id="stat-total-hours">0 小時</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title">預計總收入</div>
+        <div class="stat-val" id="stat-total-income">$0</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-title" id="stat-unpaid-title">未繳清金額</div>
+        <div class="stat-val" style="color:#ef4444;" id="stat-unpaid">$0</div>
+      </div>
     </div>
+
+    <!-- 學生統計與列表 -->
     <div class="student-stats-section">
       <h3 style="font-size:0.82rem; margin-bottom:4px;" id="student-section-title">帳務統計</h3>
       <div class="student-stats-grid" id="student-stats-container"></div>
     </div>
+
     <div style="overflow-x:auto;">
       <table class="billing-table">
         <thead>
@@ -150,6 +187,7 @@
         <tbody id="billing-body"></tbody>
       </table>
     </div>
+
     <!-- 懸浮按鈕 FAB (帳務) -->
     <div class="fab-container" id="billing-fab-container">
       <div class="fab-menu" id="billing-fab-menu">
@@ -159,41 +197,69 @@
       <button class="fab-button" id="billing-fab-button" onclick="toggleFabMenu('billing')">+</button>
     </div>
   </section>
-  <!-- ================= 個人記帳 ================= -->
+
+  <!-- 3. 個人記帳 -->
   <section id="finance-view" class="personal-finance-panel">
+    <!-- 篩選列 -->
     <div class="month-filter-bar">
       <span style="font-weight:700; font-size:0.80rem;">月份：</span>
       <input type="month" id="fin-month-filter" onchange="renderFinances()">
       <button id="btn-fin-month-current" class="btn" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthCurrent()">本月</button>
       <button id="btn-fin-month-all" class="btn btn-secondary" style="padding:2px 5px; font-size:0.72rem;" onclick="setFinanceMonthAll()">全期間</button>
+      
       <span style="font-weight:700; font-size:0.80rem; margin-left:4px;">排序：</span>
       <select id="fin-sort-order" onchange="renderFinances()">
         <option value="desc">由近到遠 (新→舊)</option>
         <option value="asc">由遠到近 (舊→新)</option>
       </select>
     </div>
+
+    <!-- 統計卡片 -->
     <div class="stats-cards">
-      <div class="stat-box" onclick="toggleFinanceChart('expense')"><div class="stat-title">總支出 📊</div><div class="stat-val" style="color:#ef4444;" id="fin-stat-expense">$0</div></div>
-      <div class="stat-box" onclick="toggleFinanceChart('income')"><div class="stat-title">總收入 📊</div><div class="stat-val" style="color:#10b981;" id="fin-stat-income">$0</div></div>
-      <div class="stat-box" onclick="setFinanceAllMode('all')"><div class="stat-title">淨結餘</div><div class="stat-val" id="fin-stat-balance">$0</div></div>
-      <div class="stat-box" onclick="setFinanceAllMode('all_receivable')"><div class="stat-title">總應收</div><div class="stat-val" style="color:#ca8a04;" id="fin-stat-receivable">$0</div></div>
-      <div class="stat-box" onclick="setFinanceAllMode('all_payable')"><div class="stat-title">總應付</div><div class="stat-val" style="color:#c2410c;" id="fin-stat-payable">$0</div></div>
+      <div class="stat-box" onclick="toggleFinanceChart('expense')">
+        <div class="stat-title">總支出 📊</div>
+        <div class="stat-val" style="color:#ef4444;" id="fin-stat-expense">$0</div>
+      </div>
+      <div class="stat-box" onclick="toggleFinanceChart('income')">
+        <div class="stat-title">總收入 📊</div>
+        <div class="stat-val" style="color:#10b981;" id="fin-stat-income">$0</div>
+      </div>
+      <div class="stat-box" onclick="setFinanceAllMode('all')">
+        <div class="stat-title">淨結餘</div>
+        <div class="stat-val" id="fin-stat-balance">$0</div>
+      </div>
+      <div class="stat-box" onclick="setFinanceAllMode('all_receivable')">
+        <div class="stat-title">總應收</div>
+        <div class="stat-val" style="color:#ca8a04;" id="fin-stat-receivable">$0</div>
+      </div>
+      <div class="stat-box" onclick="setFinanceAllMode('all_payable')">
+        <div class="stat-title">總應付</div>
+        <div class="stat-val" style="color:#c2410c;" id="fin-stat-payable">$0</div>
+      </div>
     </div>
+
     <div id="finance-chart-container" class="expense-chart-container">
       <h4 id="finance-chart-title" style="font-size:0.85rem; margin-bottom:10px; text-align:center;">當月支出佔比</h4>
       <div id="finance-chart-content" style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:20px;"></div>
     </div>
+    
     <div class="finance-filter-chips" id="finance-filter-chips"></div>
+    
     <div style="overflow-x:auto;">
       <table class="finance-table">
         <thead>
           <tr>
-            <th>日期<br>類型</th><th>主類別<br>子類別</th><th>金額</th><th>備註</th><th>操作</th>
+            <th>日期<br>類型</th>
+            <th>主類別<br>子類別</th>
+            <th>金額</th>
+            <th>備註</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody id="finance-body"></tbody>
       </table>
     </div>
+
     <!-- 懸浮按鈕 FAB (記帳) -->
     <div class="fab-container" id="finance-fab-container">
       <div class="fab-menu" id="finance-fab-menu">
@@ -206,17 +272,20 @@
       <button class="fab-button" id="finance-fab-button" onclick="toggleFabMenu('finance')">+</button>
     </div>
   </section>
-  <!-- ================= 好友連線 ================= -->
+
+  <!-- 4. 好友連線 -->
   <section id="friends-view" class="friends-panel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
       <h3 style="margin:0;">🤝 好友與連線系統</h3>
     </div>
+    
     <div class="search-bar-wrapper" style="margin-bottom:16px;">
       <span style="margin-left: 8px; font-size: 1.1rem; opacity: 0.5;">🔍</span>
       <input type="text" id="friend-search-input" placeholder="輸入 Email 或暱稱搜尋好友...">
       <button class="btn btn-secondary search-btn" onclick="searchFriends()">搜尋</button>
     </div>
     <div id="friend-search-result" style="margin-bottom:12px; font-size:0.8rem; font-weight:bold; color:var(--primary);"></div>
+    
     <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
       <div style="flex:1; min-width:280px;">
         <h4 style="font-size:0.9rem; border-bottom:1px solid var(--border); padding-bottom:4px;">好友列表</h4>
@@ -232,8 +301,9 @@
     </div>
   </section>
 
-  <!-- ================= 設定介面 (新功能) ================= -->
+  <!-- 5. 設定介面 -->
   <section id="settings-view" class="settings-panel">
+    <!-- 個人資料 -->
     <div class="settings-group">
       <div class="settings-group-title">👤 個人資料</div>
       <div class="settings-item" onclick="openNicknameModal()">
@@ -242,6 +312,7 @@
       </div>
     </div>
 
+    <!-- 顯示設定 -->
     <div class="settings-group">
       <div class="settings-group-title">👁️ 顯示設定</div>
       <div class="settings-item">
@@ -268,6 +339,7 @@
       </div>
     </div>
     
+    <!-- 課表管理 -->
     <div class="settings-group">
       <div class="settings-group-title">📅 課表管理</div>
       <div class="settings-item" onclick="openScheduleSelectModal()">
@@ -295,6 +367,7 @@
       </div>
     </div>
 
+    <!-- 課表顯示設定 -->
     <div class="settings-group">
       <div class="settings-group-title">⚙️ 課表顯示設定</div>
       <div class="settings-item" onclick="toggle24HourMode()">
@@ -323,6 +396,7 @@
       </div>
     </div>
 
+    <!-- 帳目顯示設定 -->
     <div class="settings-group">
       <div class="settings-group-title">💰 帳目顯示設定</div>
       <div class="settings-item" onclick="toggleShowHiddenItems()">
@@ -343,23 +417,32 @@
   <!-- ================= 底部導覽列 ================= -->
   <nav class="mobile-tab-bar">
     <div class="mobile-tab-item active" id="tab-btn-schedule" onclick="switchView('schedule')">
-      <div class="mobile-tab-icon">📖</div><div>課表</div>
+      <div class="mobile-tab-icon">📖</div>
+      <div>課表</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-billing" onclick="switchView('billing')">
-      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div><div id="nav-billing-text">帳務</div>
+      <div class="mobile-tab-icon" id="nav-billing-icon">💰</div>
+      <div id="nav-billing-text">帳務</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-finance" onclick="switchView('finance')">
-      <div class="mobile-tab-icon">💳</div><div>記帳</div>
+      <div class="mobile-tab-icon">💳</div>
+      <div>記帳</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-friends" onclick="switchView('friends')">
-      <div class="mobile-tab-icon">🤝<span class="badge" id="tab-friends-badge">0</span></div><div>連線</div>
+      <div class="mobile-tab-icon">🤝<span class="badge" id="tab-friends-badge">0</span></div>
+      <div>連線</div>
     </div>
     <div class="mobile-tab-item" id="tab-btn-settings" onclick="switchView('settings')">
-      <div class="mobile-tab-icon">⚙️</div><div>設定</div>
+      <div class="mobile-tab-icon">⚙️</div>
+      <div>設定</div>
     </div>
   </nav>
-  <!-- ================= 所有 Modals ================= -->
-  <!-- 認證與暱稱設定 -->
+
+  <!-- ================= 所有 Modals (彈出視窗) ================= -->
+
+  <!-- ================= 1. 認證與使用者設定 ================= -->
+  
+  <!-- 暱稱設定 -->
   <div class="modal" id="nickname-modal">
     <div class="modal-content">
       <div class="modal-header">設定/修改暱稱</div>
@@ -375,6 +458,7 @@
     </div>
   </div>
 
+  <!-- 雲端帳號登入/註冊 -->
   <div class="modal" id="auth-modal">
     <div class="modal-content">
       <div class="modal-header">雲端帳號同步</div>
@@ -395,11 +479,16 @@
     </div>
   </div>
 
+
+  <!-- ================= 2. 課表管理相關 ================= -->
+
   <!-- 課表隱私遮罩 -->
   <div class="modal" id="privacy-mask-modal">
     <div class="modal-content">
       <div class="modal-header">設定當前課表隱私遮罩</div>
-      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">勾選的項目在好友連線查看時，將僅顯示「忙碌中」，隱藏名稱與地點。</div>
+      <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:10px;">
+        勾選的項目在好友連線查看時，將僅顯示「忙碌中」，隱藏名稱與地點。
+      </div>
       <div id="privacy-mask-list" style="max-height: 300px; overflow-y: auto; padding: 4px; font-size:0.8rem; display:flex; flex-direction:column; gap:8px;"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('privacy-mask-modal')">取消</button>
@@ -408,7 +497,7 @@
     </div>
   </div>
 
-  <!-- 課表切換與建立 -->
+  <!-- 課表切換與選擇 -->
   <div class="modal" id="schedule-select-modal">
     <div class="modal-content">
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -422,13 +511,23 @@
     </div>
   </div>
 
+  <!-- 新增課表 -->
   <div class="modal" id="create-schedule-modal">
     <div class="modal-content">
       <div class="modal-header">新增課表</div>
-      <div class="form-group"><label>課表名稱 *</label><input type="text" id="new-sch-title"></div>
+      <div class="form-group">
+        <label>課表名稱 *</label>
+        <input type="text" id="new-sch-title">
+      </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>開始日期 *</label><input type="date" id="new-sch-start"></div>
-        <div class="form-group" style="flex:1;"><label>結束日期 *</label><input type="date" id="new-sch-end"></div>
+        <div class="form-group" style="flex:1;">
+          <label>開始日期 *</label>
+          <input type="date" id="new-sch-start">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>結束日期 *</label>
+          <input type="date" id="new-sch-end">
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('create-schedule-modal')">取消</button>
@@ -437,13 +536,23 @@
     </div>
   </div>
 
+  <!-- 當前課表設定 -->
   <div class="modal" id="schedule-config-modal">
     <div class="modal-content">
       <div class="modal-header">當前課表名稱與日期設定</div>
-      <div class="form-group"><label>課表名稱 *</label><input type="text" id="sch-conf-title"></div>
+      <div class="form-group">
+        <label>課表名稱 *</label>
+        <input type="text" id="sch-conf-title">
+      </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>開始日期 *</label><input type="date" id="sch-conf-start"></div>
-        <div class="form-group" style="flex:1;"><label>結束日期 *</label><input type="date" id="sch-conf-end"></div>
+        <div class="form-group" style="flex:1;">
+          <label>開始日期 *</label>
+          <input type="date" id="sch-conf-start">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>結束日期 *</label>
+          <input type="date" id="sch-conf-end">
+        </div>
       </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('schedule-config-modal')">取消</button>
@@ -451,14 +560,40 @@
       </div>
     </div>
   </div>
-  
-  <!-- ================= 學校課程 ================= -->
+
+  <!-- 節次時間設定 -->
+  <div class="modal" id="period-config-modal">
+    <div class="modal-content">
+      <div class="modal-header">設定各節次起訖時間</div>
+      <table class="period-edit-table">
+        <thead>
+          <tr>
+            <th style="width: 40px;">節次</th>
+            <th>名稱</th>
+            <th style="width: 95px;">開始</th>
+            <th style="width: 95px;">結束</th>
+          </tr>
+        </thead>
+        <tbody id="period-config-body"></tbody>
+      </table>
+      <div class="modal-actions" style="margin-top: 10px;">
+        <button class="btn btn-secondary" onclick="resetPeriodsToDefault()" style="margin-right:auto;">恢復預設</button>
+        <button class="btn btn-secondary" onclick="closeModal('period-config-modal')">取消</button>
+        <button class="btn" onclick="savePeriodConfig()">儲存</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= 3. 課程與事件建立 ================= -->
+
+  <!-- 學校課程設定 -->
   <div class="modal" id="school-modal">
     <div class="modal-content">
       <div class="modal-header">學校課程設定</div>
       
       <!-- 多重節次選擇區塊 (透過 FAB 觸發時顯示) -->
-<div id="sch-multi-select-wrap" style="display:none; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div id="sch-multi-select-wrap" style="display:none; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:12px;">
         <div class="form-group">
           <label>加入方式 *</label>
           <select id="sch-multi-mode" onchange="onSchMultiModeChange(this.value)">
@@ -469,8 +604,13 @@
         <div class="form-group">
           <label>上課星期 *</label>
           <select id="sch-multi-day">
-            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
-            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
+            <option value="1">週一</option>
+            <option value="2">週二</option>
+            <option value="3">週三</option>
+            <option value="4">週四</option>
+            <option value="5">週五</option>
+            <option value="6">週六</option>
+            <option value="7">週日</option>
           </select>
         </div>
         <div class="form-group" id="sch-multi-period-wrap">
@@ -481,17 +621,28 @@
         </div>
       </div>
       
-      <!-- 新增 / 編輯自訂時間 UI (移出至獨立區塊) -->
+      <!-- 新增 / 編輯自訂時間 UI -->
       <div class="form-row" id="sch-multi-time-wrap" style="display:none; margin-bottom: 8px;">
-        <div class="form-group" style="flex:1;"><label>開始時間 *</label><input type="time" id="sch-multi-start-time" value="08:00"></div>
-        <div class="form-group" style="flex:1;"><label>結束時間 *</label><input type="time" id="sch-multi-end-time" value="10:00"></div>
+        <div class="form-group" style="flex:1;">
+          <label>開始時間 *</label>
+          <input type="time" id="sch-multi-start-time" value="08:00">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>結束時間 *</label>
+          <input type="time" id="sch-multi-end-time" value="10:00">
+        </div>
       </div>
 
       <div class="form-group">
         <label>快速選擇歷史課程</label>
-        <select id="sch-preset-select" onchange="onSelectPresetCourse(this.value)"><option value="">-- 選擇已存在的課程自動帶入 --</option></select>
+        <select id="sch-preset-select" onchange="onSelectPresetCourse(this.value)">
+          <option value="">-- 選擇已存在的課程自動帶入 --</option>
+        </select>
       </div>
-      <div class="form-group"><label>課程名稱 *</label><input type="text" id="sch-name"></div>
+      <div class="form-group">
+        <label>課程名稱 *</label>
+        <input type="text" id="sch-name">
+      </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
           <label>課程屬性 *</label>
@@ -504,11 +655,22 @@
           <input type="text" id="sch-type-custom">
         </div>
       </div>
-      <div class="form-group"><label>學分</label><input type="number" id="sch-credits" step="0.5" min="0" placeholder="未填寫預設為 2"></div>
-      <div class="form-group"><label>教室地點</label><input type="text" id="sch-room"></div>
-      <div class="form-group"><label>授課教師</label><input type="text" id="sch-teacher"></div>
       <div class="form-group">
-        <label><input type="checkbox" id="sch-is-masked" style="width:auto;"> 對好友隱藏詳細資訊 (將顯示為「忙碌中」)</label>
+        <label>學分</label>
+        <input type="number" id="sch-credits" step="0.5" min="0" placeholder="未填寫預設為 2">
+      </div>
+      <div class="form-group">
+        <label>教室地點</label>
+        <input type="text" id="sch-room">
+      </div>
+      <div class="form-group">
+        <label>授課教師</label>
+        <input type="text" id="sch-teacher">
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="sch-is-masked" style="width:auto;"> 對好友隱藏詳細資訊 (將顯示為「忙碌中」)
+        </label>
       </div>
       <div class="form-group">
         <label>課程底色</label>
@@ -525,24 +687,50 @@
     </div>
   </div>
 
+  <!-- 家教課程設定 -->
   <div class="modal" id="tutoring-modal">
     <div class="modal-content">
       <div class="modal-header">家教課程設定</div>
-      <div class="form-group"><label>快速選擇歷史家教</label><select id="tut-preset-select" onchange="onSelectPresetTutoring(this.value)"><option value="">-- 選擇 --</option></select></div>
-      <div class="form-group"><label>學生姓名 *</label><input type="text" id="tut-student"></div>
+      <div class="form-group">
+        <label>快速選擇歷史家教</label>
+        <select id="tut-preset-select" onchange="onSelectPresetTutoring(this.value)">
+          <option value="">-- 選擇 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>學生姓名 *</label>
+        <input type="text" id="tut-student">
+      </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
           <label>星期 *</label>
           <select id="tut-day">
-            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option><option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
           </select>
         </div>
-        <div class="form-group" style="flex:2;"><label>開始時間 *</label><input type="time" id="tut-start-time" value="18:00"></div>
-        <div class="form-group" style="flex:2;"><label>結束時間 *</label><input type="time" id="tut-end-time" value="20:00"></div>
+        <div class="form-group" style="flex:2;">
+          <label>開始時間 *</label>
+          <input type="time" id="tut-start-time" value="18:00">
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>結束時間 *</label>
+          <input type="time" id="tut-end-time" value="20:00">
+        </div>
       </div>
-      <div class="form-group"><label>教學科目與年級</label><input type="text" id="tut-subject"></div>
-      <div class="form-group"><label>上課地點 / 地址 *</label><input type="text" id="tut-location"></div>
-      <div class="form-group"><label><input type="checkbox" id="tut-is-masked" style="width:auto;"> 對好友隱藏詳細資訊</label></div>
+      <div class="form-group">
+        <label>教學科目與年級</label>
+        <input type="text" id="tut-subject">
+      </div>
+      <div class="form-group">
+        <label>上課地點 / 地址 *</label>
+        <input type="text" id="tut-location">
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="tut-is-masked" style="width:auto;"> 對好友隱藏詳細資訊
+        </label>
+      </div>
       <div class="form-group">
         <label>家長聯絡方式</label>
         <input type="text" id="tut-line" placeholder="Line ID" style="margin-bottom:4px;">
@@ -550,7 +738,10 @@
         <input type="text" id="tut-phone" placeholder="電話">
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>收費時薪 ($/hr)</label><input type="number" id="tut-rate"></div>
+        <div class="form-group" style="flex:1;">
+          <label>收費時薪 ($/hr)</label>
+          <input type="number" id="tut-rate">
+        </div>
         <div class="form-group" style="flex:1;">
           <label>課程底色</label>
           <div style="display:flex; align-items:center; gap:6px;">
@@ -559,8 +750,14 @@
           </div>
         </div>
       </div>
-      <div class="form-group"><label>總備忘錄</label><textarea id="tut-memo" rows="2"></textarea></div>
-      <div class="form-group"><label>每周備忘錄</label><textarea id="tut-weekly-memo" rows="2"></textarea></div>
+      <div class="form-group">
+        <label>總備忘錄</label>
+        <textarea id="tut-memo" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>每周備忘錄</label>
+        <textarea id="tut-weekly-memo" rows="2"></textarea>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="tut-delete-btn" onclick="deleteTutoringClass()" style="margin-right:auto;">刪除</button>
         <button class="btn btn-secondary" onclick="closeModal('tutoring-modal')">取消</button>
@@ -569,6 +766,7 @@
     </div>
   </div>
 
+  <!-- 工作排程設定 -->
   <div class="modal" id="work-modal">
     <div class="modal-content">
       <div class="modal-header">工作排程設定</div>
@@ -579,22 +777,47 @@
           <option value="weekly">每週工作 (僅限當週)</option>
         </select>
       </div>
-      <div class="form-group"><label>快速選擇</label><select id="work-preset-select" onchange="onSelectPresetWork(this.value)"><option value="">-- 選擇 --</option></select></div>
-      <div class="form-group"><label>工作名稱 *</label><input type="text" id="work-name"></div>
+      <div class="form-group">
+        <label>快速選擇</label>
+        <select id="work-preset-select" onchange="onSelectPresetWork(this.value)">
+          <option value="">-- 選擇 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>工作名稱 *</label>
+        <input type="text" id="work-name">
+      </div>
       <div class="form-row">
         <div class="form-group" style="flex:1;">
           <label>星期 *</label>
           <select id="work-day">
-            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option><option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
           </select>
         </div>
-        <div class="form-group" style="flex:2;"><label>開始時間 *</label><input type="time" id="work-start-time" value="09:00"></div>
-        <div class="form-group" style="flex:2;"><label>結束時間 *</label><input type="time" id="work-end-time" value="12:00"></div>
+        <div class="form-group" style="flex:2;">
+          <label>開始時間 *</label>
+          <input type="time" id="work-start-time" value="09:00">
+        </div>
+        <div class="form-group" style="flex:2;">
+          <label>結束時間 *</label>
+          <input type="time" id="work-end-time" value="12:00">
+        </div>
       </div>
-      <div class="form-group"><label>工作地點 *</label><input type="text" id="work-location"></div>
-      <div class="form-group"><label><input type="checkbox" id="work-is-masked" style="width:auto;"> 對好友隱藏詳細資訊</label></div>
+      <div class="form-group">
+        <label>工作地點 *</label>
+        <input type="text" id="work-location">
+      </div>
+      <div class="form-group">
+        <label>
+          <input type="checkbox" id="work-is-masked" style="width:auto;"> 對好友隱藏詳細資訊
+        </label>
+      </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>工作時薪</label><input type="number" id="work-rate"></div>
+        <div class="form-group" style="flex:1;">
+          <label>工作時薪</label>
+          <input type="number" id="work-rate">
+        </div>
         <div class="form-group" style="flex:1;">
           <label>底色</label>
           <div style="display:flex; gap:6px;">
@@ -603,7 +826,10 @@
           </div>
         </div>
       </div>
-      <div class="form-group"><label>工作備註</label><textarea id="work-memo" rows="2"></textarea></div>
+      <div class="form-group">
+        <label>工作備註</label>
+        <textarea id="work-memo" rows="2"></textarea>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-danger" id="work-delete-btn" onclick="deleteWorkClass()" style="margin-right:auto;">刪除</button>
         <button class="btn btn-secondary" onclick="closeModal('work-modal')">取消</button>
@@ -611,8 +837,108 @@
       </div>
     </div>
   </div>
-  
-  <!-- 便利貼 modal -->
+
+  <!-- 臨時調課設定與管理 -->
+  <div class="modal" id="override-modal">
+    <div class="modal-content">
+      <div class="modal-header">臨時調課設定與管理</div>
+      <div class="form-group">
+        <label>選擇欲調動課程或工作 *</label>
+        <select id="ovr-source-select" onchange="populateOverrideOriginal()">
+          <option value="">-- 選擇 --</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>原資訊</label>
+        <input type="text" id="ovr-source-desc" readonly style="background:var(--table-th-bg);">
+      </div>
+      <div class="form-group">
+        <label>調至目標日期 *</label>
+        <input type="date" id="ovr-target-date">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label>開始時間 *</label>
+          <input type="time" id="ovr-start-time" value="18:00">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>結束時間 *</label>
+          <input type="time" id="ovr-end-time" value="20:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>調課備註</label>
+        <input type="text" id="ovr-memo">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="ovr-delete-btn" style="display:none; margin-right:auto;" onclick="deleteOverrideFromModal()">刪除調課</button>
+        <button class="btn btn-secondary" onclick="closeModal('override-modal')">關閉</button>
+        <button class="btn" id="ovr-save-btn" onclick="saveClassOverride()">建立調課</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 新增每周臨時事件 -->
+  <div class="modal" id="temp-event-modal">
+    <div class="modal-content">
+      <div class="modal-header" id="temp-event-modal-title">新增每周臨時事件</div>
+      <div class="form-group">
+        <label>事件名稱 *</label>
+        <input type="text" id="tmp-title">
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <label>星期 *</label>
+          <select id="tmp-day">
+            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option>
+            <option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>時段類型 *</label>
+          <select id="tmp-slot-type" onchange="onTempSlotTypeChange(this.value)">
+            <option value="period">節次內</option>
+            <option value="noon">中午</option>
+            <option value="evening">夜間/課後</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="tmp-period-wrap">
+        <label>指定節次 *</label>
+        <select id="tmp-period-id">
+          <option value="1">第一節</option><option value="2">第二節</option><option value="3">第三節</option>
+          <option value="4">第四節</option><option value="5">第五節</option><option value="6">第六節</option>
+          <option value="7">第七節</option><option value="8">第八節</option>
+        </select>
+      </div>
+      <div class="form-row" id="tmp-time-wrap" style="display:none;">
+        <div class="form-group" style="flex:1;">
+          <label>開始時間 *</label>
+          <input type="time" id="tmp-start-time" value="12:00">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>結束時間 *</label>
+          <input type="time" id="tmp-end-time" value="13:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>事件地點</label>
+        <input type="text" id="tmp-location">
+      </div>
+      <div class="form-group">
+        <label>事件備忘</label>
+        <input type="text" id="tmp-memo">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-danger" id="tmp-delete-btn" style="display:none; margin-right:auto;" onclick="deleteTempEventFromModal()">刪除</button>
+        <button class="btn btn-secondary" onclick="closeModal('temp-event-modal')">取消</button>
+        <button class="btn" id="tmp-save-btn" onclick="saveTempEvent()">儲存事件</button>
+      </div>
+    </div>
+  </div>
+  <!-- ================= 4. 便利貼與詳細檢視 ================= -->
+
+  <!-- 留言便利貼 -->
   <div class="modal" id="leave-note-modal">
     <div class="modal-content">
       <div class="modal-header">留言便利貼給好友</div>
@@ -629,6 +955,7 @@
     </div>
   </div>
   
+  <!-- 閱讀便利貼 -->
   <div class="modal" id="read-note-modal">
     <div class="modal-content">
       <div class="modal-header">💬 收到便利貼</div>
@@ -640,6 +967,7 @@
     </div>
   </div>
 
+  <!-- 詳細資料檢視 -->
   <div class="modal" id="view-detail-modal">
     <div class="modal-content">
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -654,82 +982,17 @@
     </div>
   </div>
 
-  <div class="modal" id="period-config-modal">
-    <div class="modal-content">
-      <div class="modal-header">設定各節次起訖時間</div>
-      <table class="period-edit-table">
-        <thead><tr><th style="width: 40px;">節次</th><th>名稱</th><th style="width: 95px;">開始</th><th style="width: 95px;">結束</th></tr></thead>
-        <tbody id="period-config-body"></tbody>
-      </table>
-      <div class="modal-actions" style="margin-top: 10px;">
-        <button class="btn btn-secondary" onclick="resetPeriodsToDefault()" style="margin-right:auto;">恢復預設</button>
-        <button class="btn btn-secondary" onclick="closeModal('period-config-modal')">取消</button>
-        <button class="btn" onclick="savePeriodConfig()">儲存</button>
-      </div>
-    </div>
-  </div>
 
-  <div class="modal" id="override-modal">
-    <div class="modal-content">
-      <div class="modal-header">臨時調課設定與管理</div>
-      <div class="form-group"><label>選擇欲調動課程或工作 *</label><select id="ovr-source-select" onchange="populateOverrideOriginal()"><option value="">-- 選擇 --</option></select></div>
-      <div class="form-group"><label>原資訊</label><input type="text" id="ovr-source-desc" readonly style="background:var(--table-th-bg);"></div>
-      <div class="form-group"><label>調至目標日期 *</label><input type="date" id="ovr-target-date"></div>
-      <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>開始時間 *</label><input type="time" id="ovr-start-time" value="18:00"></div>
-        <div class="form-group" style="flex:1;"><label>結束時間 *</label><input type="time" id="ovr-end-time" value="20:00"></div>
-      </div>
-      <div class="form-group"><label>調課備註</label><input type="text" id="ovr-memo"></div>
-      <div class="modal-actions">
-        <button class="btn btn-danger" id="ovr-delete-btn" style="display:none; margin-right:auto;" onclick="deleteOverrideFromModal()">刪除調課</button>
-        <button class="btn btn-secondary" onclick="closeModal('override-modal')">關閉</button>
-        <button class="btn" id="ovr-save-btn" onclick="saveClassOverride()">建立調課</button>
-      </div>
-    </div>
-  </div>
+  <!-- ================= 5. 帳務與記帳相關 Modal ================= -->
 
-  <div class="modal" id="temp-event-modal">
-    <div class="modal-content">
-      <div class="modal-header" id="temp-event-modal-title">新增每周臨時事件</div>
-      <div class="form-group"><label>事件名稱 *</label><input type="text" id="tmp-title"></div>
-      <div class="form-row">
-        <div class="form-group" style="flex:1;">
-          <label>星期 *</label>
-          <select id="tmp-day">
-            <option value="1">週一</option><option value="2">週二</option><option value="3">週三</option><option value="4">週四</option><option value="5">週五</option><option value="6">週六</option><option value="7">週日</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex:1;">
-          <label>時段類型 *</label>
-          <select id="tmp-slot-type" onchange="onTempSlotTypeChange(this.value)">
-            <option value="period">節次內</option><option value="noon">中午</option><option value="evening">夜間/課後</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-group" id="tmp-period-wrap">
-        <label>指定節次 *</label>
-        <select id="tmp-period-id">
-          <option value="1">第一節</option><option value="2">第二節</option><option value="3">第三節</option><option value="4">第四節</option><option value="5">第五節</option><option value="6">第六節</option><option value="7">第七節</option><option value="8">第八節</option>
-        </select>
-      </div>
-      <div class="form-row" id="tmp-time-wrap" style="display:none;">
-        <div class="form-group" style="flex:1;"><label>開始時間 *</label><input type="time" id="tmp-start-time" value="12:00"></div>
-        <div class="form-group" style="flex:1;"><label>結束時間 *</label><input type="time" id="tmp-end-time" value="13:00"></div>
-      </div>
-      <div class="form-group"><label>事件地點</label><input type="text" id="tmp-location"></div>
-      <div class="form-group"><label>事件備忘</label><input type="text" id="tmp-memo"></div>
-      <div class="modal-actions">
-        <button class="btn btn-danger" id="tmp-delete-btn" style="display:none; margin-right:auto;" onclick="deleteTempEventFromModal()">刪除</button>
-        <button class="btn btn-secondary" onclick="closeModal('temp-event-modal')">取消</button>
-        <button class="btn" id="tmp-save-btn" onclick="saveTempEvent()">儲存事件</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- 新增家教帳務記錄 -->
   <div class="modal" id="billing-modal">
     <div class="modal-content">
       <div class="modal-header" id="billing-modal-title">新增家教帳務記錄</div>
-      <div class="form-group"><label>日期 *</label><input type="date" id="bill-date" onchange="onBillingDateOrStudentChange()"></div>
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="bill-date" onchange="onBillingDateOrStudentChange()">
+      </div>
       <div class="form-group">
         <label>學生姓名 *</label>
         <div class="form-row">
@@ -738,15 +1001,27 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>時數 (hr) *</label><input type="number" step="0.5" id="bill-hours" oninput="calcBillAmount()"></div>
-        <div class="form-group" style="flex:1;"><label>時薪 ($/hr) *</label><input type="number" id="bill-rate" oninput="calcBillAmount()"></div>
+        <div class="form-group" style="flex:1;">
+          <label>時數 (hr) *</label>
+          <input type="number" step="0.5" id="bill-hours" oninput="calcBillAmount()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>時薪 ($/hr) *</label>
+          <input type="number" id="bill-rate" oninput="calcBillAmount()">
+        </div>
       </div>
-      <div class="form-group"><label>合計金額 ($)</label><input type="number" id="bill-total" readonly style="background:var(--table-th-bg); font-weight:700;"></div>
+      <div class="form-group">
+        <label>合計金額 ($)</label>
+        <input type="number" id="bill-total" readonly style="background:var(--table-th-bg); font-weight:700;">
+      </div>
       <div class="form-group">
         <label>狀態</label>
         <select id="bill-status"><option value="unpaid">未繳</option><option value="paid">已繳</option></select>
       </div>
-      <div class="form-group"><label>備註說明</label><input type="text" id="bill-notes"></div>
+      <div class="form-group">
+        <label>備註說明</label>
+        <input type="text" id="bill-notes">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('billing-modal')">取消</button>
         <button class="btn" onclick="saveBillingRecord()">儲存記錄</button>
@@ -754,10 +1029,14 @@
     </div>
   </div>
 
+  <!-- 新增工作帳務記錄 -->
   <div class="modal" id="work-billing-modal">
     <div class="modal-content">
       <div class="modal-header" id="wbill-modal-title">新增工作帳務記錄</div>
-      <div class="form-group"><label>日期 *</label><input type="date" id="wbill-date" onchange="onWorkBillingDateOrNameChange()"></div>
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="wbill-date" onchange="onWorkBillingDateOrNameChange()">
+      </div>
       <div class="form-group">
         <label>工作名稱 *</label>
         <div class="form-row">
@@ -766,15 +1045,27 @@
         </div>
       </div>
       <div class="form-row">
-        <div class="form-group" style="flex:1;"><label>時數 (hr) *</label><input type="number" step="0.5" id="wbill-hours" oninput="calcWorkBillAmount()"></div>
-        <div class="form-group" style="flex:1;"><label>時薪 ($/hr) *</label><input type="number" id="wbill-rate" oninput="calcWorkBillAmount()"></div>
+        <div class="form-group" style="flex:1;">
+          <label>時數 (hr) *</label>
+          <input type="number" step="0.5" id="wbill-hours" oninput="calcWorkBillAmount()">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>時薪 ($/hr) *</label>
+          <input type="number" id="wbill-rate" oninput="calcWorkBillAmount()">
+        </div>
       </div>
-      <div class="form-group"><label>合計金額 ($)</label><input type="number" id="wbill-total" readonly style="background:var(--table-th-bg); font-weight:700;"></div>
+      <div class="form-group">
+        <label>合計金額 ($)</label>
+        <input type="number" id="wbill-total" readonly style="background:var(--table-th-bg); font-weight:700;">
+      </div>
       <div class="form-group">
         <label>狀態</label>
         <select id="wbill-status"><option value="unpaid">未領</option><option value="paid">已領</option></select>
       </div>
-      <div class="form-group"><label>備註說明</label><input type="text" id="wbill-notes"></div>
+      <div class="form-group">
+        <label>備註說明</label>
+        <input type="text" id="wbill-notes">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('work-billing-modal')">取消</button>
         <button class="btn" onclick="saveWorkBillingRecord()">儲存記錄</button>
@@ -782,11 +1073,15 @@
     </div>
   </div>
 
+  <!-- 新增收支記錄 (個人記帳) -->
   <div class="modal" id="finance-modal">
     <div class="modal-content">
       <div class="modal-header" id="fin-modal-title">新增收支記錄</div>
       <input type="hidden" id="fin-edit-id">
-      <div class="form-group"><label>日期 *</label><input type="date" id="fin-date"></div>
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="fin-date">
+      </div>
       <div class="form-group">
         <label>類型 *</label>
         <select id="fin-type" onchange="onFinanceTypeChange()">
@@ -794,14 +1089,26 @@
           <option value="receivable">應收</option><option value="payable">應付</option>
         </select>
       </div>
-      <div class="form-group"><label>主類別 *</label><select id="fin-parent-cat" onchange="onFinanceParentCatChange()"></select></div>
-      <div class="form-group"><label>子類別 *</label><select id="fin-sub-cat"></select></div>
-      <div class="form-group"><label>金額 ($) *</label><input type="number" id="fin-amount" placeholder="0"></div>
+      <div class="form-group">
+        <label>主類別 *</label>
+        <select id="fin-parent-cat" onchange="onFinanceParentCatChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>子類別 *</label>
+        <select id="fin-sub-cat"></select>
+      </div>
+      <div class="form-group">
+        <label>金額 ($) *</label>
+        <input type="number" id="fin-amount" placeholder="0">
+      </div>
       <div class="form-group" id="fin-friend-wrap" style="display:none;">
         <label>發送請款通知給連線好友</label>
         <select id="fin-friend-select" style="border-color:var(--primary);"><option value="">-- 不發送 --</option></select>
       </div>
-      <div class="form-group"><label>備註</label><input type="text" id="fin-notes"></div>
+      <div class="form-group">
+        <label>備註</label>
+        <input type="text" id="fin-notes">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('finance-modal')">取消</button>
         <button class="btn" onclick="saveFinanceRecord()">儲存</button>
@@ -809,14 +1116,27 @@
     </div>
   </div>
 
+  <!-- 還款作業 -->
   <div class="modal" id="repay-modal">
     <div class="modal-content">
       <div class="modal-header">還款作業</div>
       <input type="hidden" id="repay-id">
-      <div class="form-group"><label>款項資訊</label><input type="text" id="repay-info" readonly style="background:var(--table-th-bg);"></div>
-      <div class="form-group"><label>日期 *</label><input type="date" id="repay-date"></div>
-      <div class="form-group"><label>金額 ($) *</label><input type="number" id="repay-amount"></div>
-      <div class="form-group"><label>備註</label><input type="text" id="repay-notes"></div>
+      <div class="form-group">
+        <label>款項資訊</label>
+        <input type="text" id="repay-info" readonly style="background:var(--table-th-bg);">
+      </div>
+      <div class="form-group">
+        <label>日期 *</label>
+        <input type="date" id="repay-date">
+      </div>
+      <div class="form-group">
+        <label>金額 ($) *</label>
+        <input type="number" id="repay-amount">
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <input type="text" id="repay-notes">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('repay-modal')">取消</button>
         <button class="btn" onclick="confirmRepay()">確認</button>
@@ -824,6 +1144,7 @@
     </div>
   </div>
 
+  <!-- 固定經常性收支設定 -->
   <div class="modal" id="recurring-modal">
     <div class="modal-content">
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -838,19 +1159,37 @@
     </div>
   </div>
 
+  <!-- 新增固定收支項目 -->
   <div class="modal" id="recurring-edit-modal">
     <div class="modal-content">
       <div class="modal-header" id="rec-modal-title">新增固定收支</div>
       <input type="hidden" id="rec-edit-id">
-      <div class="form-group"><label>每月觸發日期 (1~31) *</label><input type="number" id="rec-day" min="1" max="31"></div>
+      <div class="form-group">
+        <label>每月觸發日期 (1~31) *</label>
+        <input type="number" id="rec-day" min="1" max="31">
+      </div>
       <div class="form-group">
         <label>類型 *</label>
-        <select id="rec-type" onchange="onRecurringTypeChange()"><option value="expense">支出</option><option value="income">收入</option></select>
+        <select id="rec-type" onchange="onRecurringTypeChange()">
+          <option value="expense">支出</option><option value="income">收入</option>
+        </select>
       </div>
-      <div class="form-group"><label>主類別 *</label><select id="rec-parent-cat" onchange="onRecurringParentCatChange()"></select></div>
-      <div class="form-group"><label>子類別 *</label><select id="rec-sub-cat"></select></div>
-      <div class="form-group"><label>金額 ($) *</label><input type="number" id="rec-amount"></div>
-      <div class="form-group"><label>備註</label><input type="text" id="rec-notes"></div>
+      <div class="form-group">
+        <label>主類別 *</label>
+        <select id="rec-parent-cat" onchange="onRecurringParentCatChange()"></select>
+      </div>
+      <div class="form-group">
+        <label>子類別 *</label>
+        <select id="rec-sub-cat"></select>
+      </div>
+      <div class="form-group">
+        <label>金額 ($) *</label>
+        <input type="number" id="rec-amount">
+      </div>
+      <div class="form-group">
+        <label>備註</label>
+        <input type="text" id="rec-notes">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('recurring-edit-modal')">取消</button>
         <button class="btn" onclick="saveRecurringRecord()">儲存</button>
@@ -858,6 +1197,7 @@
     </div>
   </div>
 
+  <!-- 收支類別設定與管理 -->
   <div class="modal" id="category-manage-modal">
     <div class="modal-content">
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -882,6 +1222,7 @@
     </div>
   </div>
 
+  <!-- 新增主類別 -->
   <div class="modal" id="cat-add-main-modal">
     <div class="modal-content">
       <div class="modal-header">新增主類別</div>
@@ -892,7 +1233,10 @@
           <option value="🛫">🛫</option><option value="💻">💻</option><option value="⭐">⭐</option><option value="🏷️">🏷️</option>
         </select>
       </div>
-      <div class="form-group"><label>名稱 *</label><input type="text" id="cat-add-main-name"></div>
+      <div class="form-group">
+        <label>名稱 *</label>
+        <input type="text" id="cat-add-main-name">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('cat-add-main-modal')">取消</button>
         <button class="btn" onclick="confirmAddMainCategory()">確認</button>
@@ -900,11 +1244,18 @@
     </div>
   </div>
 
+  <!-- 新增子類別 -->
   <div class="modal" id="cat-add-sub-modal">
     <div class="modal-content">
       <div class="modal-header">新增子類別</div>
-      <div class="form-group"><label>所屬主類別 *</label><select id="cat-add-sub-parent"></select></div>
-      <div class="form-group"><label>名稱 *</label><input type="text" id="cat-add-sub-name"></div>
+      <div class="form-group">
+        <label>所屬主類別 *</label>
+        <select id="cat-add-sub-parent"></select>
+      </div>
+      <div class="form-group">
+        <label>名稱 *</label>
+        <input type="text" id="cat-add-sub-name">
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('cat-add-sub-modal')">取消</button>
         <button class="btn" onclick="confirmAddSubCategory()">確認</button>
@@ -912,10 +1263,14 @@
     </div>
   </div>
 
+  <!-- 類別搬移 -->
   <div class="modal" id="cat-move-modal">
     <div class="modal-content">
       <div class="modal-header">搬移</div>
-      <div class="form-group"><label>搬移到：</label><select id="cat-move-select"></select></div>
+      <div class="form-group">
+        <label>搬移到：</label>
+        <select id="cat-move-select"></select>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('cat-move-modal')">取消</button>
         <button class="btn" onclick="confirmCatMove()">確認</button>
@@ -923,10 +1278,14 @@
     </div>
   </div>
 
-<div class="modal" id="cat-merge-modal">
+  <!-- 類別合併 -->
+  <div class="modal" id="cat-merge-modal">
     <div class="modal-content">
       <div class="modal-header">合併</div>
-      <div class="form-group"><label>合併到：</label><select id="cat-merge-select"></select></div>
+      <div class="form-group">
+        <label>合併到：</label>
+        <select id="cat-merge-select"></select>
+      </div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('cat-merge-modal')">取消</button>
         <button class="btn" onclick="confirmCatMerge()">確認</button>
@@ -934,6 +1293,7 @@
     </div>
   </div>
 
+  <!-- 類別操作選單 (Bottom Sheet) -->
   <div class="modal" id="category-action-modal">
     <div class="modal-content bottom-sheet">
       <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
@@ -944,7 +1304,30 @@
     </div>
   </div>
 
-<!-- ================= 學分計算機 ================= -->
+  <!-- 帳務操作選單 (Bottom Sheet) -->
+  <div class="modal" id="billing-action-modal">
+    <div class="modal-content bottom-sheet">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">帳務操作</div>
+      <div id="billing-action-container"></div>
+      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('billing-action-modal')">取消</button>
+    </div>
+  </div>
+
+  <!-- 記帳操作選單 (Bottom Sheet) -->
+  <div class="modal" id="finance-action-modal">
+    <div class="modal-content bottom-sheet">
+      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
+      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">記帳操作</div>
+      <div id="finance-action-container"></div>
+      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('finance-action-modal')">取消</button>
+    </div>
+  </div>
+
+
+  <!-- ================= 6. 學分計算機與成績管理 ================= -->
+
+  <!-- 學分計算機主面板 -->
   <div class="modal" id="credit-calculator-modal" style="padding: 0;">
     <div class="modal-content" style="width: 100%; height: 100%; max-width: none; max-height: none; border-radius: 0; display: flex; flex-direction: column; margin: 0; border: none; padding-top: env(safe-area-inset-top, 12px); padding-bottom: env(safe-area-inset-bottom, 12px); background: var(--bg);" onclick="resetAllSwipes()">
       
@@ -991,12 +1374,12 @@
     </div>
   </div>
 
-<!-- 點擊輸入成績 Modal (底部彈窗) -->
+  <!-- 點擊輸入成績 Modal (底部彈窗) -->
   <div class="modal" id="score-input-modal">
     <div class="modal-content" style="border-radius: 20px 20px 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px); align-self: flex-end; margin: 0; width: 100%;">
       <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
       <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; border: none; margin-bottom: 0;">
-        <div style="width:24px;"></div> <!-- 排版用佔位 -->
+        <div style="width:24px;"></div>
         <span style="font-size:1.1rem; font-weight:bold;">成績計算</span>
         <button style="background:var(--table-th-bg); border:none; width:24px; height:24px; border-radius:50%; color:var(--text-muted); font-weight:bold; cursor:pointer;" onclick="openScoreInfoModal()">?</button>
       </div>
@@ -1118,41 +1501,10 @@
     </div>
   </div>
 
-  <!-- 帳務操作 Bottom Sheet -->
-  <div class="modal" id="billing-action-modal">
-    <div class="modal-content bottom-sheet">
-      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
-      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">帳務操作</div>
-      <div id="billing-action-container"></div>
-      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('billing-action-modal')">取消</button>
-    </div>
-  </div>
 
-  <!-- 記帳操作 Bottom Sheet -->
-  <div class="modal" id="finance-action-modal">
-    <div class="modal-content bottom-sheet">
-      <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px; margin: 0 auto 15px auto;"></div>
-      <div class="modal-header" style="text-align:center; border:none; font-weight:bold;">記帳操作</div>
-      <div id="finance-action-container"></div>
-      <button class="action-menu-btn" style="background:transparent; border:1px solid var(--border); margin-top:8px;" onclick="closeModal('finance-action-modal')">取消</button>
-    </div>
-  </div>
+  <!-- ================= 7. 其他系統對話框與元件 ================= -->
 
-  <script src="app.js" defer></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((registration) => {
-            console.log('SW registered: ', registration);
-          })
-          .catch((error) => {
-            console.log('SW registration failed: ', error);
-          });
-      });
-    }
-  </script>
-
+  <!-- 自訂確認對話框 -->
   <div class="modal modal-center" id="custom-confirm-modal" style="z-index: 100000;">
     <div class="modal-content" style="max-width: 320px; text-align: center;">
       <div class="modal-header" id="confirm-modal-title" style="border:none; font-size:1.1rem; color:var(--text);">確認操作</div>
@@ -1164,17 +1516,18 @@
     </div>
   </div>
 
+  <!-- 多筆行程時間重疊選擇 -->
   <div class="modal" id="overlap-selection-modal">
-  <div class="modal-content">
-    <div class="modal-header" id="overlap-selection-title">多筆行程時間重疊</div>
-    <div id="overlap-selection-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column;"></div>
-    <div class="modal-actions" style="margin-top: 15px;">
-      <button class="btn btn-secondary" onclick="closeModal('overlap-selection-modal')">關閉</button>
+    <div class="modal-content">
+      <div class="modal-header" id="overlap-selection-title">多筆行程時間重疊</div>
+      <div id="overlap-selection-list" style="max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column;"></div>
+      <div class="modal-actions" style="margin-top: 15px;">
+        <button class="btn btn-secondary" onclick="closeModal('overlap-selection-modal')">關閉</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- ================= 自訂日曆 (Custom Date Picker) ================= -->
+  <!-- 自訂日曆 (Custom Date Picker) -->
   <div class="custom-dp-overlay" id="custom-dp-overlay">
     <div class="custom-dp-container" onclick="event.stopPropagation()">
       
@@ -1194,7 +1547,7 @@
         <div class="custom-dp-days" id="custom-dp-grid"></div>
       </div>
 
-      <!-- 模式 2：手動輸入 (單一無框凹槽，三段式輸入) -->
+      <!-- 模式 2：手動輸入 -->
       <div id="custom-dp-view-manual" class="custom-dp-manual">
         <div style="font-size:0.8rem; color:var(--text-muted); text-align:center;">點擊數字即可輸入</div>
         <div class="custom-dp-input-group">
@@ -1215,6 +1568,24 @@
 
     </div>
   </div>
+
+
+  <!-- ================= 8. 核心 JavaScript 與 Service Worker ================= -->
+
+  <script src="app.js" defer></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((error) => {
+            console.log('SW registration failed: ', error);
+          });
+      });
+    }
+  </script>
 
 </body>
 </html>

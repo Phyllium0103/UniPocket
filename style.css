@@ -1,3 +1,7 @@
+/* =========================================
+   1. 字體定義 (Fonts)
+   - 載入各式自訂字體並設定 swap 顯示策略
+   ========================================= */
 @font-face { 
   font-family: 'Unifont'; 
   src: url('./fonts/unifont_jp-18.0.01.otf') format('opentype');
@@ -84,6 +88,11 @@
   font-display: swap; 
 }
 
+/* =========================================
+   2. 全域與基礎設定 (Global & Base)
+   - 包含 CSS 重置與頁面底色等
+   ========================================= */
+/* 原有兩段完全相同的 * 選擇器，為維持「不改動任何內容」要求，此處全數保留 */
 * { 
   box-sizing: border-box; 
   margin: 0; 
@@ -108,11 +117,132 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-/* 👇 新增這段，讓所有輸入框恢復可選取狀態 👇 */
+/* =========================================
+   3. 全局輸入框美化 (Inputs & Forms)
+   - 自動適應深淺色主題與無框設定
+   ========================================= */
+/* 讓所有輸入框恢復可選取狀態 */
 input, textarea, select { 
   user-select: auto; 
 }
-/* ================== Header & Utilities ================== */
+
+/* 基礎輸入框與文字區域樣式 */
+input[type="text"], 
+input[type="email"], 
+input[type="password"], 
+input[type="number"], 
+input[type="date"], 
+input[type="time"], 
+input[type="month"], 
+textarea {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  width: 100%;
+}
+
+/* 針對 textarea 的特殊設定 */
+textarea {
+  resize: none;
+  overflow: hidden;
+  min-height: 40px;
+}
+
+/* 輸入框聚焦時的發光效果 */
+input:focus, 
+textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--today-header-bg);
+}
+
+/* 隱藏數字輸入框預設上下箭頭 */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+  -webkit-appearance: none; 
+  margin: 0; 
+}
+input[type=number] { 
+  -moz-appearance: textfield; 
+}
+
+/* 隱藏原生日期選擇器圖示，並修正鼠標 */
+input[type="date"]::-webkit-calendar-picker-indicator { 
+  display: none; 
+}
+input[type="date"] { 
+  cursor: pointer; 
+  user-select: none; 
+}
+
+/* =========================================
+   4. 基礎按鈕元件 (Buttons)
+   - 包含主要按鈕、次要按鈕、警示按鈕等
+   ========================================= */
+/* 提升主要按鈕質感 */
+.btn { 
+  padding: 6px 12px; 
+  background: var(--primary); 
+  color: #ffffff; 
+  border: none; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-size: 0.8rem; 
+  font-weight: 700; 
+  display: inline-flex; 
+  align-items: center; 
+  justify-content: center; 
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.btn:active { 
+  transform: scale(0.95); 
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
+}
+
+/* 翻新次要按鈕：跟隨主題的微透明底色與邊框 */
+.btn-secondary { 
+  background: var(--card-bg); 
+  color: var(--text); 
+  border: 1px solid var(--border); 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+}
+.btn-secondary:hover { 
+  background: var(--slot-hover); 
+}
+.btn-secondary:active { 
+  background: var(--border); 
+}
+
+/* 警示按鈕 */
+.btn-warning { 
+  background: #f59e0b; 
+  color: #ffffff; 
+}
+.btn-danger { 
+  background: #ef4444; 
+  color: #ffffff; 
+}
+
+/* 勾選框文字標籤 */
+.checkbox-label { 
+  display: flex; 
+  align-items: center; 
+  gap: 4px; 
+  font-size: 0.75rem; 
+  font-weight: 600; 
+  cursor: pointer; 
+  color: var(--text); 
+}
+
+/* =========================================
+   5. 頁首與頂部導覽 (Header & Utilities)
+   - 包含大標題、主題切換、同步狀態與週次顯示
+   ========================================= */
 header { 
   display: flex; 
   justify-content: space-between; 
@@ -191,7 +321,6 @@ h1 {
   background: #22c55e; 
 }
 
-/* ================== Navigations ================== */
 .week-nav-bar { 
   display: flex; 
   justify-content: space-between; 
@@ -205,80 +334,23 @@ h1 {
   gap: 6px; 
 }
 
-.week-nav-btns { display: flex; align-items: center; gap: 4px; }
-.week-display { font-weight: 700; font-size: 0.80rem; color: var(--text); }
-
-/* ================== Buttons ================== */
-/* 提升主要按鈕質感 */
-.btn { 
-  padding: 6px 12px; 
-  background: var(--primary); 
-  color: #ffffff; 
-  border: none; 
-  border-radius: 8px; 
-  cursor: pointer; 
-  font-size: 0.8rem; 
-  font-weight: 700; 
-  display: inline-flex; 
-  align-items: center; 
-  justify-content: center; 
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1); 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-.btn:active { 
-  transform: scale(0.95); 
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1); 
-}
-
-/* 翻新次要按鈕：跟隨主題的微透明底色與邊框 */
-.btn-secondary { 
-  background: var(--card-bg); 
-  color: var(--text); 
-  border: 1px solid var(--border); 
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
-}
-.btn-secondary:hover { background: var(--slot-hover); }
-.btn-secondary:active { background: var(--border); }
-
-.btn-warning { background: #f59e0b; color: #ffffff; }
-.btn-danger { background: #ef4444; color: #ffffff; }
-
-.checkbox-label { 
+.week-nav-btns { 
   display: flex; 
   align-items: center; 
   gap: 4px; 
-  font-size: 0.75rem; 
-  font-weight: 600; 
-  cursor: pointer; 
+}
+
+.week-display { 
+  font-weight: 700; 
+  font-size: 0.80rem; 
   color: var(--text); 
 }
 
-/* ================== 全局輸入框美化 ================== */
-/* 讓所有輸入框自動適應深淺色主題 */
-input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], input[type="time"], input[type="month"], textarea {
-  background-color: var(--input-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 0.85rem;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
-  width: 100%;
-}
-/* 新增針對 textarea 的設定 */
-textarea {
-  resize: none;
-  overflow: hidden;
-  min-height: 40px;
-}
-input:focus, textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--today-header-bg); /* 聚焦時有符合主題的發光感 */
-}
-
-/* ================== 特殊 UI 元件設計 ================== */
-/* 1. 一體成型搜尋列 */
+/* =========================================
+   6. 特殊 UI 元件設計 (Special UI Components)
+   - 包含搜尋列組合與膠囊型週次按鈕群組
+   ========================================= */
+/* 一體成型搜尋列 */
 .search-bar-wrapper {
   display: flex;
   align-items: center;
@@ -310,7 +382,7 @@ input:focus, textarea:focus {
   box-shadow: none;
 }
 
-/* 2. 膠囊型週次切換器 */
+/* 膠囊型週次切換器 */
 .week-nav-group {
   display: flex;
   align-items: center;
@@ -325,15 +397,13 @@ input:focus, textarea:focus {
   background: transparent;
   border: none;
   border-right: 1px solid var(--border);
-  padding: 8px 12px; /* 稍微縮小一點左右 padding，給文字更多空間 */
+  padding: 8px 12px;
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--text-muted);
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
-  
-  /* 👇 加上這三行修正換行與對齊問題 👇 */
-  white-space: nowrap; /* 強制文字絕對不換行 */
+  white-space: nowrap; 
   display: flex; 
   align-items: center; 
   justify-content: center;
@@ -349,54 +419,215 @@ input:focus, textarea:focus {
   background: var(--card-bg);
 }
 
-/* ================== Deadlines ================== */
-.deadline-banner { 
-  background: var(--student-stat-bg); 
-  border: 1px solid var(--student-stat-border); 
-  border-radius: 8px; 
-  margin-bottom: 8px; 
-  overflow: hidden; 
-  transition: background 0.2s, border-color 0.2s; 
+/* =========================================
+   7. 行動版底部導覽 (Mobile Bottom Tab)
+   - 固定於螢幕底部的分頁切換列
+   ========================================= */
+.mobile-tab-bar { 
+  position: fixed; 
+  bottom: 0; 
+  left: 0; 
+  width: 100%; 
+  height: calc(env(safe-area-inset-bottom, 0px) + 52px); 
+  padding-bottom: env(safe-area-inset-bottom, 0px); 
+  background: var(--bg); 
+  border-top: 1px solid var(--border); 
+  display: flex; 
+  justify-content: space-around; 
+  align-items: center; 
+  z-index: 90; 
 }
 
-.deadline-header { 
-  padding: 8px 10px; 
+.mobile-tab-item { 
   display: flex; 
-  justify-content: space-between; 
-  align-items: flex-start; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  flex: 1; 
+  height: 100%; 
+  color: var(--text-muted); 
+  font-size: 0.72rem; 
+  font-weight: 600; 
   cursor: pointer; 
-  color: var(--student-stat-text); 
-  transition: color 0.2s; 
 }
 
-.deadline-list { 
+.mobile-tab-item.active { 
+  color: var(--primary); 
+  font-weight: 700; 
+}
+.mobile-tab-icon { 
+  font-size: 1.15rem; 
+  margin-bottom: 1px; 
+  position: relative;
+}
+.badge { 
+  position: absolute; 
+  top: -2px; 
+  right: -8px; 
+  background: #ef4444; 
+  color: white; 
+  font-size: 0.55rem; 
+  padding: 2px 4px; 
+  border-radius: 10px; 
   display: none; 
-  padding: 0 10px 8px 10px; 
-  border-top: 1px dashed var(--student-stat-border); 
-  transition: border-color 0.2s; 
 }
 
-.deadline-list.active { display: block; }
-.deadline-item { 
-  display: flex; 
-  justify-content: space-between; 
-  font-size: 0.75rem; 
-  padding: 4px 0; 
-  border-bottom: 1px dashed var(--student-stat-border); 
-  color: var(--text); 
-  transition: border-color 0.2s, color 0.2s; 
+/* =========================================
+   8. 浮動操作按鈕與選單 (Floating Action Button & Menu)
+   - 位於右下角的加號按鈕與其彈出式選項
+   ========================================= */
+.fab-container {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+  right: 16px; 
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; 
+  pointer-events: none; 
 }
-.deadline-item:last-child { border-bottom: none; }
 
-/* ================== Timetable ================== */
+.fab-button, 
+.fab-item {
+  pointer-events: auto; 
+}
+
+.fab-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end; 
+  gap: 10px;
+  margin-bottom: 12px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(15px); 
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.fab-menu.active {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.fab-item {
+  background: var(--card-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.fab-item:active { 
+  transform: scale(0.95); 
+}
+
+.fab-button {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: transparent; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  cursor: pointer;
+  border: none;
+  position: relative; 
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s;
+}
+
+/* 使用 CSS 繪製絕對置中的橫線與直線 (作為按鈕圖示) */
+.fab-button::before,
+.fab-button::after {
+  content: '';
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 2px; 
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+/* 橫線 */
+.fab-button::before {
+  width: 24px;
+  height: 2px;
+}
+/* 直線 */
+.fab-button::after {
+  width: 2px;
+  height: 24px;
+}
+
+/* 展開狀態下變成 X */
+.fab-button.active { 
+  transform: rotate(45deg); 
+}
+
+/* =========================================
+   9. 齒輪按鈕與底部動作選單 (Gear Button & Action Menu)
+   ========================================= */
+.gear-action-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  outline: none;
+  transition: transform 0.2s, color 0.2s;
+}
+.gear-action-btn:active {
+  transform: scale(0.85) rotate(45deg);
+  color: var(--primary);
+}
+
+.action-menu-btn {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 8px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  background: var(--table-th-bg);
+  color: var(--text);
+  transition: background 0.2s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.action-menu-btn:active {
+  background: var(--border);
+  transform: scale(0.98);
+}
+.action-menu-btn.danger {
+  color: #ef4444;
+  background: #fee2e2;
+}
+.action-menu-btn.danger:active {
+  background: #fecaca;
+}
+
+/* =========================================
+   10. 課表容器 (Timetable Container)
+   - 負責外框的滾動與高度限制
+   ========================================= */
 .timetable-container { 
   width: 100%; 
-  
-  /* 👇 1. 將高度設為 auto，外框就會「剛好」貼合課表內容，隨之變長變短 */
+  /* 將高度設為 auto，外框就會「剛好」貼合課表內容 */
   height: auto; 
-  /* 👇 2. 保留一個最大高度，避免在螢幕特別小的手機上撐破畫面，超出時依然可以滑動 */
+  /* 保留一個最大高度，避免在螢幕特別小的手機上撐破畫面，超出時依然可以滑動 */
   max-height: 85vh; 
-  
   overflow-x: auto; 
   overflow-y: auto; 
   background: var(--card-bg); 
@@ -406,14 +637,18 @@ input:focus, textarea:focus {
   -webkit-overflow-scrolling: touch; 
 }
 
-/* 調整 4：修正 border-collapse 造成的 sticky 邊框消失問題 */
+/* =========================================
+   11. 課表基礎表格 (Timetable Table)
+   - 修正 sticky 與 border 破圖問題
+   ========================================= */
 table { 
   table-layout: fixed; 
-  border-collapse: separate; /* 改為 separate 解決破圖 */
+  border-collapse: separate; /* 解決 sticky 邊框消失的問題 */
   border-spacing: 0;
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
 }
+
 th, td { 
   border-bottom: 1px solid var(--border); 
   border-right: 1px solid var(--border); 
@@ -421,7 +656,6 @@ th, td {
   text-align: center; 
   vertical-align: top; 
 }
-
 
 th { 
   background: var(--table-th-bg); 
@@ -432,7 +666,7 @@ th {
   position: sticky; /* 凍結頂部 */
   top: 0;           
   z-index: 50;      /* 確保不會被卡片蓋住 */
-  box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border); /* 補償 separate 的邊框顯示 */
+  box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border); 
 }
 
 th.today-header { 
@@ -440,9 +674,13 @@ th.today-header {
   color: var(--today-header-text); 
   border-bottom: none; 
   font-weight: 700; 
-  box-shadow: 0 2px 0 var(--primary), 0 -1px 0 var(--border); /* 粗底線效果改用 shadow 繪製 */
+  box-shadow: 0 2px 0 var(--primary), 0 -1px 0 var(--border); 
 }
 
+/* =========================================
+   12. 課表行與列細部設定 (Rows & Columns)
+   - 時間軸與格子對齊方式
+   ========================================= */
 .col-time {
   position: sticky;
   left: 0;
@@ -459,7 +697,12 @@ thead .col-time {
   z-index: 60; /* 左上角交叉點需為最高層級 */
 }
 
-.table-col-wrapper { position: relative; width: 100%; height: 100%; }
+.table-col-wrapper { 
+  position: relative; 
+  width: 100%; 
+  height: 100%; 
+}
+
 .cell-slot { 
   height: 56px; 
   cursor: pointer; 
@@ -471,12 +714,18 @@ thead .col-time {
   transition: background 0.15s ease; 
   position: relative; 
 }
-.cell-slot:active { background: var(--slot-hover); }
+.cell-slot:active { 
+  background: var(--slot-hover); 
+}
 
+/* 內容對齊輔助 class */
 .align-left { text-align: left !important; align-items: flex-start !important; }
 .align-center { text-align: center !important; align-items: center !important; }
 .align-right { text-align: right !important; align-items: flex-end !important; }
 
+/* =========================================
+   13. 課表格子內的基本項目 (Slot Items)
+   ========================================= */
 .slot-item { 
   border-radius: 4px; 
   padding: 3px 4px; 
@@ -526,7 +775,10 @@ thead .col-time {
   z-index: 20; 
 }
 
-/* ================== Float Cards (Timetable) ================== */
+/* =========================================
+   14. 浮動卡片 (Float Cards / Timetable overlays)
+   - 用於跨時段的家教或活動
+   ========================================= */
 .col-overlay-container { 
   position: absolute; 
   top: 0; 
@@ -567,6 +819,10 @@ thead .col-time {
   white-space: normal;
   max-width: 100%;
 }
+.tutoring-float-card .item-title {
+  /* 確保即使寬度極窄也不會破壞排版 */
+  max-width: 100%;
+}
 
 .tutoring-float-card.is-override-temp { 
   border: 2px solid var(--primary); 
@@ -574,11 +830,10 @@ thead .col-time {
   box-shadow: 0 3px 8px rgba(0,0,0,0.15), inset 0 0 0 1px var(--card-bg); 
   justify-content: center; 
 }
-.tutoring-float-card .item-title {
-  /* 確保即使寬度極窄也不會破壞排版 */
-  max-width: 100%;
-}
 
+/* =========================================
+   15. 特殊時段 (中午與晚間)
+   ========================================= */
 .evening-row td, .noon-row td { 
   background: var(--card-bg); 
   vertical-align: middle; 
@@ -593,7 +848,11 @@ thead .col-time {
   align-items: stretch; 
 }
 
-.evening-empty, .noon-empty { font-size: 0.68rem; color: var(--text-muted); text-align: center; }
+.evening-empty, .noon-empty { 
+  font-size: 0.68rem; 
+  color: var(--text-muted); 
+  text-align: center; 
+}
 
 .evening-card, .noon-card { 
   border-radius: 4px; 
@@ -621,6 +880,7 @@ thead .col-time {
   justify-content: center; 
 }
 
+/* 課表底部的橫幅按鈕 */
 .schedule-footer-banner { 
   background: var(--card-bg); 
   border: 1px solid var(--border); 
@@ -634,130 +894,222 @@ thead .col-time {
   cursor: pointer; 
   transition: background 0.2s; 
 }
+.schedule-footer-banner:hover { 
+  background: var(--table-th-bg); 
+}
 
-.schedule-footer-banner:hover { background: var(--table-th-bg); }
+/* =========================================
+   16. 彈跳視窗與表單 (Modals & Forms)
+   - 包含新增/編輯資料用的對話框及內部元件
+   ========================================= */
+.modal { 
+  display: none; 
+  position: fixed; 
+  top: 0; left: 0; 
+  width: 100%; height: 100%; 
+  background: rgba(0,0,0,0.6); 
+  justify-content: center; 
+  align-items: center; 
+  z-index: 100; 
+  padding: 12px; 
+}
+.modal.active { 
+  display: flex; 
+}
 
-/* ================== Floating Action Button (FAB) ================== */
-.fab-container {
-  position: fixed;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
-  right: 16px; /* 💡 維持靠右 */
-  z-index: 80;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* 💡 確保選單與按鈕都靠右對齊 */
-  pointer-events: none; 
+.modal-content { 
+  background: var(--modal-bg); 
+  color: var(--text); 
+  border-radius: 10px; 
+  width: 100%; max-width: 440px; 
+  max-height: 85vh; 
+  overflow-y: auto; 
+  padding: 14px; 
+  position: relative; 
+  border: 1px solid var(--border); 
 }
-.fab-button, .fab-item {
-  pointer-events: auto; 
+
+/* 絕對置中型彈窗 */
+.modal.modal-center {
+  align-items: center;
+  padding: 16px;
 }
-.fab-menu {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end; /* 💡 子選項靠右對齊 */
-  gap: 10px;
-  margin-bottom: 12px;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(15px); /* 短距離平滑浮出，不改變大小 */
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+.modal-header { 
+  font-size: 0.95rem; 
+  font-weight: 700; 
+  margin-bottom: 8px; 
+  border-bottom: 1px solid var(--border); 
+  padding-bottom: 6px; 
 }
-.fab-menu.active {
-  opacity: 1;
-  visibility: visible;
-  transform: translateY(0);
+
+/* 彈窗內的表單群組 */
+.form-group { 
+  margin-bottom: 8px; 
 }
-.fab-item {
-  background: var(--card-bg);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  cursor: pointer;
-  transition: background 0.2s, transform 0.1s;
+.form-group label { 
+  display: block; 
+  font-size: 0.74rem; 
+  font-weight: 600; 
+  color: var(--text-muted); 
+  margin-bottom: 3px; 
 }
-.fab-item:active { transform: scale(0.95); }
-.fab-button {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: var(--primary);
-  color: transparent; /* 💡 隱藏原本有偏移問題的文字 '+' */
+.form-group input, 
+.form-group textarea, 
+.form-group select { 
+  width: 100%; 
+  padding: 6px 8px; 
+  border: 1px solid var(--border); 
+  border-radius: 6px; 
+  font-size: 0.80rem; 
+  background: var(--input-bg); 
+  color: var(--text); 
+  outline: none; 
+}
+.form-row { 
+  display: flex; 
+  gap: 6px; 
+}
+
+.modal-actions { 
+  display: flex; 
+  justify-content: space-between; 
+  gap: 10px; 
+  margin-top: 20px; 
+  margin-bottom: 15px; /* 往上推一點，不要碰到底部邊緣 */
+}
+.modal-actions button {
+  flex: 1; 
+  padding: 10px 8px; /* 微調縮小按鈕高度 */
+  font-size: 0.9rem; /* 字體維持適中 */
+  border-radius: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  margin: 0 !important; 
+}
+
+/* =========================================
+   17. 彈窗內的詳細資訊與特殊選擇器
+   ========================================= */
+/* 多選網格 (例如：選擇節次) */
+.period-select-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+.period-chk-btn {
+  padding: 6px 0;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--card-bg);
   cursor: pointer;
-  border: none;
-  position: relative; /* 💡 給偽元素作為絕對定位的基準 */
-  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), background-color 0.3s;
+  transition: all 0.2s;
+  user-select: none;
+}
+.period-chk-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
 }
 
-/* 💡 使用 CSS 繪製絕對置中的橫線與直線 */
-.fab-button::before,
-.fab-button::after {
-  content: '';
-  position: absolute;
-  background-color: #ffffff;
-  border-radius: 2px; /* 讓十字邊緣稍微圓潤，質感更好 */
-  /* 確保線條 100% 完美居中 */
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+.detail-card { 
+  background: var(--table-th-bg); 
+  border: 1px solid var(--border); 
+  border-radius: 6px; 
+  padding: 8px 10px; 
+  margin-bottom: 8px; 
 }
-
-/* 橫線 */
-.fab-button::before {
-  width: 24px;
-  height: 2px;
-}
-
-/* 直線 */
-.fab-button::after {
-  width: 2px;
-  height: 24px;
-}
-
-.fab-button.active { 
-  transform: rotate(45deg); /* 原地旋轉45度變成完美的 X */
-}
-/* ================== Mobile Bottom Tab ================== */
-.mobile-tab-bar { 
-  position: fixed; 
-  bottom: 0; 
-  left: 0; 
-  width: 100%; 
-  height: calc(env(safe-area-inset-bottom, 0px) + 52px); 
-  padding-bottom: env(safe-area-inset-bottom, 0px); 
-  background: var(--bg); 
-  border-top: 1px solid var(--border); 
-  display: flex; 
-  justify-content: space-around; 
-  align-items: center; 
-  z-index: 90; 
-}
-
-.mobile-tab-item { 
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  justify-content: center; 
-  flex: 1; 
-  height: 100%; 
-  color: var(--text-muted); 
-  font-size: 0.72rem; 
+.detail-label { 
+  font-size: 0.70rem; 
   font-weight: 600; 
-  cursor: pointer; 
+  color: var(--text-muted); 
+  margin-top: 4px; 
+}
+.detail-value { 
+  font-size: 0.80rem; 
+  color: var(--text); 
+  margin-bottom: 2px; 
+  word-break: break-all; 
 }
 
-.mobile-tab-item.active { color: var(--primary); font-weight: 700; }
-.mobile-tab-icon { font-size: 1.15rem; margin-bottom: 1px; position: relative;}
-.badge { position: absolute; top: -2px; right: -8px; background: #ef4444; color: white; font-size: 0.55rem; padding: 2px 4px; border-radius: 10px; display: none; }
+.period-edit-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 6px; 
+  font-size: 0.75rem; 
+}
+.period-edit-table th, 
+.period-edit-table td { 
+  padding: 4px 6px; 
+  border: 1px solid var(--border); 
+}
+.period-edit-table input { 
+  padding: 3px; 
+  border-radius: 4px; 
+  border: 1px solid var(--border); 
+  width: 100%; 
+  font-size: 0.75rem; 
+  background: var(--input-bg); 
+  color: var(--text); 
+}
 
-/* ================== Settings Panel ================== */
+/* =========================================
+   18. 手機版底部滑出視窗 (Bottom Sheet)
+   - 針對手機優化彈窗顯示動畫與圓角
+   ========================================= */
+@media (max-width: 768px) {
+  /* 為了防止手機版預設從底部滑上來，針對 modal-center 做排除 */
+  .modal:not(.modal-center) {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-content {
+    border-radius: 16px 16px 0 0;
+    max-height: 92vh;
+    animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+    margin: 0;
+    width: 100%;
+    border-bottom: none;
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .modal.modal-center .modal-content {
+    margin: auto;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 320px;
+    border-bottom: 1px solid var(--border);
+    animation: popInCenter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0.5; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes popInCenter {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 強制底部滑出樣式 (Utility) */
+.bottom-sheet {
+  border-radius: 20px 20px 0 0 !important;
+  align-self: flex-end;
+  margin: 0 !important;
+  width: 100%;
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
+  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+/* =========================================
+   19. 設定面板與開關 (Settings Panel)
+   ========================================= */
 .settings-panel {
   padding: 0 4px;
   display: none;
@@ -790,8 +1142,14 @@ thead .col-time {
   cursor: pointer;
   transition: background 0.2s;
 }
-.settings-item:last-child { border-bottom: none; }
-.settings-item:active { background: var(--slot-hover); }
+.settings-item:last-child { 
+  border-bottom: none; 
+}
+.settings-item:active { 
+  background: var(--slot-hover); 
+}
+
+/* iOS 風格的開關元件 */
 .settings-item .toggle-switch {
   position: relative;
   width: 44px;
@@ -812,11 +1170,19 @@ thead .col-time {
   transition: transform 0.3s;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
-.settings-item .toggle-switch.active { background: var(--primary); }
-.settings-item .toggle-switch.active::after { transform: translateX(20px); }
+.settings-item .toggle-switch.active { 
+  background: var(--primary); 
+}
+.settings-item .toggle-switch.active::after { 
+  transform: translateX(20px); 
+}
 
-/* ================== Panels & Filters ================== */
-.billing-panel, .personal-finance-panel, .friends-panel { 
+/* =========================================
+   20. 儀表板面板與過濾器 (Panels & Filters)
+   ========================================= */
+.billing-panel, 
+.personal-finance-panel, 
+.friends-panel { 
   background: var(--card-bg); 
   padding: 12px; 
   border-radius: 8px; 
@@ -824,7 +1190,11 @@ thead .col-time {
   display: none; 
 }
 
-.billing-type-bar { display: flex; gap: 6px; margin-bottom: 10px; }
+.billing-type-bar { 
+  display: flex; 
+  gap: 6px; 
+  margin-bottom: 10px; 
+}
 .billing-type-btn { 
   padding: 6px 14px; 
   border-radius: 6px; 
@@ -836,7 +1206,11 @@ thead .col-time {
   cursor: pointer; 
   transition: all 0.2s ease; 
 }
-.billing-type-btn.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+.billing-type-btn.active { 
+  background: var(--primary); 
+  color: #ffffff; 
+  border-color: var(--primary); 
+}
 
 .month-filter-bar { 
   display: flex; 
@@ -848,7 +1222,8 @@ thead .col-time {
   margin-bottom: 10px; 
   flex-wrap: wrap; 
 }
-.month-filter-bar select, .month-filter-bar input { 
+.month-filter-bar select, 
+.month-filter-bar input { 
   padding: 4px 6px; 
   border-radius: 4px; 
   border: 1px solid var(--border); 
@@ -857,10 +1232,17 @@ thead .col-time {
   color: var(--text); 
 }
 
-.student-filter-chips, .finance-filter-chips { 
-  display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; align-items: center; 
+.student-filter-chips, 
+.finance-filter-chips { 
+  display: flex; 
+  gap: 5px; 
+  overflow-x: auto; 
+  padding-bottom: 4px; 
+  margin-bottom: 10px; 
+  align-items: center; 
 }
-.student-chip, .finance-chip { 
+.student-chip, 
+.finance-chip { 
   padding: 3px 10px; 
   border-radius: 12px; 
   font-size: 0.72rem; 
@@ -871,10 +1253,124 @@ thead .col-time {
   cursor: pointer; 
   white-space: nowrap; 
 }
-.student-chip.active, .finance-chip.active { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+.student-chip.active, 
+.finance-chip.active { 
+  background: var(--primary); 
+  color: #ffffff; 
+  border-color: var(--primary); 
+}
 
-/* ================== Stats & Charts ================== */
-.stats-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 6px; margin-bottom: 12px; }
+/* =========================================
+   21. 待辦事項/截止日橫幅 (Deadlines)
+   ========================================= */
+.deadline-banner { 
+  background: var(--student-stat-bg); 
+  border: 1px solid var(--student-stat-border); 
+  border-radius: 8px; 
+  margin-bottom: 8px; 
+  overflow: hidden; 
+  transition: background 0.2s, border-color 0.2s; 
+}
+
+.deadline-header { 
+  padding: 8px 10px; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-start; 
+  cursor: pointer; 
+  color: var(--student-stat-text); 
+  transition: color 0.2s; 
+}
+
+.deadline-list { 
+  display: none; 
+  padding: 0 10px 8px 10px; 
+  border-top: 1px dashed var(--student-stat-border); 
+  transition: border-color 0.2s; 
+}
+.deadline-list.active { 
+  display: block; 
+}
+
+.deadline-item { 
+  display: flex; 
+  justify-content: space-between; 
+  font-size: 0.75rem; 
+  padding: 4px 0; 
+  border-bottom: 1px dashed var(--student-stat-border); 
+  color: var(--text); 
+  transition: border-color 0.2s, color 0.2s; 
+}
+.deadline-item:last-child { 
+  border-bottom: none; 
+}
+
+/* =========================================
+   22. 財務與帳單資料表格 (Data Tables & Tags)
+   ========================================= */
+.billing-table, 
+.finance-table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  margin-top: 8px;
+  table-layout: auto; /* 讓表格根據內容自動撐開寬度 */
+}
+.billing-table th, 
+.billing-table td, 
+.finance-table th, 
+.finance-table td { 
+  padding: 5px 6px; 
+  border: 1px solid var(--border); 
+  font-size: 0.75rem; 
+}
+
+.billing-table th:first-child, 
+.billing-table td:first-child,
+.finance-table th:first-child, 
+.finance-table td:first-child,
+.billing-table th:last-child, 
+.billing-table td:last-child,
+.finance-table th:last-child, 
+.finance-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+/* 各種狀態標籤 */
+.tag-paid { background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-unpaid { background: #fee2e2; color: #b91c1c; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-income { background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-expense { background: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-receivable { background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-payable { background: #ffedd5; color: #9a3412; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
+.tag-hidden { background: #e2e8f0; color: #64748b; padding: 1px 4px; border-radius: 3px; font-size: 0.62rem; font-weight: 600; margin-left: 4px; }
+
+/* 類別管理與週期性設定的條列 */
+.cat-manage-item, 
+.recurring-manage-item { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 6px 8px; 
+  border-bottom: 1px solid var(--border); 
+  font-size: 0.78rem; 
+}
+.cat-manage-actions { 
+  display: flex; 
+  gap: 4px; 
+}
+
+/* =========================================
+   23. 統計卡片與圖表 (Stats & Charts)
+   ========================================= */
+.stats-cards { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); 
+  gap: 6px; 
+  margin-bottom: 12px; 
+}
+
 .stat-box { 
   background: var(--stat-card-bg); 
   border: 1px solid var(--border); 
@@ -884,9 +1380,20 @@ thead .col-time {
   transition: transform 0.1s; 
   text-align: center; 
 }
-.stat-box:active { transform: scale(0.97); }
-.stat-title { font-size: 0.65rem; color: var(--text-muted); margin-bottom: 2px; }
-.stat-val { font-size: 0.90rem; font-weight: 700; color: var(--primary); }
+.stat-box:active { 
+  transform: scale(0.97); 
+}
+
+.stat-title { 
+  font-size: 0.65rem; 
+  color: var(--text-muted); 
+  margin-bottom: 2px; 
+}
+.stat-val { 
+  font-size: 0.90rem; 
+  font-weight: 700; 
+  color: var(--primary); 
+}
 
 .expense-chart-container { 
   display: none; 
@@ -896,13 +1403,35 @@ thead .col-time {
   padding: 12px; 
   margin-bottom: 12px; 
 }
-.expense-chart-container.active { display: block; }
+.expense-chart-container.active { 
+  display: block; 
+}
 
-.legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; margin-bottom: 4px; }
-.legend-color { width: 10px; height: 10px; border-radius: 50%; }
+.legend-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 0.75rem; 
+  margin-bottom: 4px; 
+}
+.legend-color { 
+  width: 10px; 
+  height: 10px; 
+  border-radius: 50%; 
+}
 
-.student-stats-section { margin-bottom: 14px; border-top: 1px solid var(--border); padding-top: 10px; }
-.student-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-top: 6px; }
+/* 學生專用統計區塊 */
+.student-stats-section { 
+  margin-bottom: 14px; 
+  border-top: 1px solid var(--border); 
+  padding-top: 10px; 
+}
+.student-stats-grid { 
+  display: grid; 
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+  gap: 6px; 
+  margin-top: 6px; 
+}
 .student-stat-card { 
   background: var(--student-stat-bg); 
   border: 1px solid var(--student-stat-border); 
@@ -910,298 +1439,23 @@ thead .col-time {
   padding: 6px 8px; 
   color: var(--student-stat-text); 
 }
-.student-stat-name { font-weight: 700; font-size: 0.82rem; margin-bottom: 3px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 2px; }
-.student-stat-row { display: flex; justify-content: space-between; font-size: 0.72rem; margin-bottom: 2px; }
-
-/* ================== Data Tables ================== */
-.billing-table, .finance-table { 
-  width: 100%; 
-  border-collapse: collapse; 
-  margin-top: 8px;
-  table-layout: auto; /* 加入這行，讓表格根據內容自動撐開寬度 */
+.student-stat-name { 
+  font-weight: 700; 
+  font-size: 0.82rem; 
+  margin-bottom: 3px; 
+  border-bottom: 1px solid rgba(0,0,0,0.1); 
+  padding-bottom: 2px; 
 }
-.billing-table th, .billing-table td, .finance-table th, .finance-table td { padding: 5px 6px; border: 1px solid var(--border); font-size: 0.75rem; }
-
-.billing-table th:first-child, .billing-table td:first-child,
-.finance-table th:first-child, .finance-table td:first-child,
-.billing-table th:last-child, .billing-table td:last-child,
-.finance-table th:last-child, .finance-table td:last-child {
-  width: 1%;
-  white-space: nowrap;
-  text-align: center;
-}
-
-.tag-paid { background: #dcfce7; color: #15803d; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-unpaid { background: #fee2e2; color: #b91c1c; padding: 1px 4px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-income { background: #dcfce7; color: #15803d; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-expense { background: #fee2e2; color: #b91c1c; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-receivable { background: #fef08a; color: #713f12; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-payable { background: #ffedd5; color: #9a3412; padding: 1px 5px; border-radius: 3px; font-size: 0.68rem; font-weight: 600; }
-.tag-hidden { background: #e2e8f0; color: #64748b; padding: 1px 4px; border-radius: 3px; font-size: 0.62rem; font-weight: 600; margin-left: 4px; }
-
-.cat-manage-item, .recurring-manage-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
-.cat-manage-actions { display: flex; gap: 4px; }
-
-/* ================== Modals ================== */
-.modal { 
-  display: none; 
-  position: fixed; 
-  top: 0; left: 0; 
-  width: 100%; height: 100%; 
-  background: rgba(0,0,0,0.6); 
-  justify-content: center; 
-  align-items: center; 
-  z-index: 100; 
-  padding: 12px; 
-}
-.modal.active { display: flex; }
-.modal-content { 
-  background: var(--modal-bg); 
-  color: var(--text); 
-  border-radius: 10px; 
-  width: 100%; max-width: 440px; 
-  max-height: 85vh; 
-  overflow-y: auto; 
-  padding: 14px; 
-  position: relative; 
-  border: 1px solid var(--border); 
-}
-
-/* 在 .modal-content 定義的下方加入 */
-.modal.modal-center {
-  align-items: center;
-  padding: 16px;
-}
-
-@media (max-width: 768px) {
-  /* 為了防止手機版預設從底部滑上來，針對 modal-center 做排除 */
-  .modal:not(.modal-center) {
-    align-items: flex-end;
-    padding: 0;
-  }
-  .modal.modal-center .modal-content {
-    margin: auto;
-    border-radius: 16px;
-    width: 90%;
-    max-width: 320px;
-    border-bottom: 1px solid var(--border);
-    animation: popInCenter 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-  }
-}
-
-@keyframes popInCenter {
-  0% { transform: scale(0.85); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-.modal-header { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-
-.form-group { margin-bottom: 8px; }
-.form-group label { display: block; font-size: 0.74rem; font-weight: 600; color: var(--text-muted); margin-bottom: 3px; }
-.form-group input, .form-group textarea, .form-group select { 
-  width: 100%; 
-  padding: 6px 8px; 
-  border: 1px solid var(--border); 
-  border-radius: 6px; 
-  font-size: 0.80rem; 
-  background: var(--input-bg); 
-  color: var(--text); 
-  outline: none; 
-}
-.form-row { display: flex; gap: 6px; }
-.modal-actions { 
+.student-stat-row { 
   display: flex; 
   justify-content: space-between; 
-  gap: 10px; 
-  margin-top: 20px; 
-  margin-bottom: 15px; /* 💡 往上推一點，不要碰到底部邊緣 */
-}
-.modal-actions button {
-  flex: 1; 
-  padding: 10px 8px; /* 💡 微調縮小按鈕高度 */
-  font-size: 0.9rem; /* 💡 字體維持適中 */
-  border-radius: 12px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 0 !important; 
+  font-size: 0.72rem; 
+  margin-bottom: 2px; 
 }
 
-/* Multi-select Grid for Courses */
-.period-select-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin-top: 4px;
-}
-.period-chk-btn {
-  padding: 6px 0;
-  text-align: center;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  background: var(--card-bg);
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-}
-.period-chk-btn.active {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
-}
-
-.detail-card { background: var(--table-th-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
-.detail-label { font-size: 0.70rem; font-weight: 600; color: var(--text-muted); margin-top: 4px; }
-.detail-value { font-size: 0.80rem; color: var(--text); margin-bottom: 2px; word-break: break-all; }
-
-.period-edit-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.75rem; }
-.period-edit-table th, .period-edit-table td { padding: 4px 6px; border: 1px solid var(--border); }
-.period-edit-table input { padding: 3px; border-radius: 4px; border: 1px solid var(--border); width: 100%; font-size: 0.75rem; background: var(--input-bg); color: var(--text); }
-
-/* ================== Friends Connect & Notifications ================== */
-.friend-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
-.friend-card { background: var(--table-th-bg); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
-.friend-info { display: flex; flex-direction: column; gap: 2px; }
-.friend-name { font-weight: 700; font-size: 0.85rem; color: var(--text); }
-.friend-email { font-size: 0.7rem; color: var(--text-muted); }
-.msg-card { background: var(--today-header-bg); border: 1px solid var(--primary); padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.8rem; }
-.common-empty { background-color: rgba(34, 197, 94, 0.25) !important; border: 2px dashed #22c55e !important; box-shadow: inset 0 0 5px rgba(34, 197, 94, 0.5); }
-.viewing-friend-banner { background: var(--primary); color: white; font-weight: bold; text-align: center; padding: 6px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
-/* ================== Error Toast Notification ================== */
-.toast {
-  position: fixed;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: #fff;
-  padding: 10px 20px;
-  border-radius: 8px;
-  z-index: 9999;
-  font-size: 0.85rem;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
-  pointer-events: none;
-}
-.toast.hidden {
-  opacity: 0;
-  transform: translateX(-50%) translateY(20px);
-}
-.toast.error {
-  background: #ef4444; 
-}
-.toast.success {
-  background: #10b981;
-}
-
-/* ================== Splash Screen 啟動畫面 ================== */
-#splash-screen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: #0f172a; 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 99999;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
-}
-.splash-content {
-  text-align: center;
-  color: #ffffff;
-}
-.splash-icon-container {
-  position: relative;
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 16px auto;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.clock {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 120px;
-  height: 120px;
-  border: 4px solid #0284c7;
-  border-radius: 50%;
-  opacity: 0;
-  z-index: 2;
-  animation: fadeIn 0.3s forwards, clockFadeOnly 0.2s forwards 1.5s;
-}
-.hand {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 4px;
-  height: 45px;
-  background: white;
-  transform-origin: bottom center;
-  margin-top: -45px;
-  margin-left: -2px;
-  animation: spinFast 1.5s cubic-bezier(0.5, 0, 0.5, 1) forwards;
-}
-.splash-icon {
-  width: 120px;
-  height: 120px;
-  position: relative;
-  z-index: 1;
-  animation: popIn 0.8s forwards 1.5s;
-  opacity: 0;
-}
-.splash-title {
-  font-size: 2rem;
-  font-weight: 900;
-  letter-spacing: 2px;
-  color: #ffffff;
-  opacity: 0;
-  animation: textSlideUp 0.8s forwards 1.7s;
-}
-#splash-screen.hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-@keyframes fadeIn { to { opacity: 1; } }
-@keyframes spinFast { 0% { transform: rotate(0deg); } 100% { transform: rotate(1440deg); opacity: 0; } }
-
-/* [修復] 動畫在舊版瀏覽器沒有指定 0% 時的閃爍問題 */
-@keyframes clockFadeOnly { 
-  0% { opacity: 1; transform: scale(1); } 
-  100% { opacity: 0; transform: scale(1); } 
-}
-
-@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
-@keyframes textSlideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
-
-/* ================== Modal Bottom Sheet & Course Details ================== */
-@media (max-width: 768px) {
-  .modal {
-    align-items: flex-end;
-    padding: 0;
-  }
-  .modal-content {
-    border-radius: 16px 16px 0 0;
-    max-height: 92vh;
-    animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-    margin: 0;
-    width: 100%;
-    border-bottom: none;
-    padding-bottom: env(safe-area-inset-bottom, 16px);
-  }
-}
-@keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0.5; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
+/* =========================================
+   24. 課程出缺席與筆記 (Course Details)
+   ========================================= */
 .attendance-row {
   display: flex;
   justify-content: space-between;
@@ -1226,6 +1480,7 @@ thead .col-time {
   color: #fff;
   border-color: var(--primary);
 }
+
 .note-item {
   background: var(--table-th-bg);
   padding: 8px;
@@ -1237,7 +1492,84 @@ thead .col-time {
   margin-bottom: 0;
 }
 
-/* ================== Credit Calculator ================== */
+/* =========================================
+   25. 學分計算機與儀表板 (Credit Calculator)
+   ========================================= */
+.credits-panel { 
+  background: var(--card-bg); 
+  padding: 12px; 
+  border-radius: 8px; 
+  border: 1px solid var(--border); 
+  margin-bottom: 20px;
+}
+
+/* 頂部圓環進度與 GPA 顯示 */
+.credit-top-card { 
+  background: var(--card-bg); 
+  border-radius: 16px; 
+  padding: 16px; 
+  margin-bottom: 12px; 
+  display: flex; 
+  align-items: center; 
+  gap: 16px; 
+  box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
+  border: 1px solid var(--border); 
+}
+.circular-progress-wrap { 
+  position: relative; 
+  width: 90px; 
+  height: 90px; 
+  border-radius: 50%; 
+  display: flex; 
+  justify-content: center; 
+  align-items: center; 
+  background: conic-gradient(var(--primary) 0%, var(--table-th-bg) 0%); 
+}
+.circular-progress-inner { 
+  width: 74px; 
+  height: 74px; 
+  border-radius: 50%; 
+  background: var(--card-bg); 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center; 
+  font-weight: 800; 
+  color: var(--text); 
+}
+.circular-progress-inner span { font-size: 1.5rem; line-height: 1; }
+.circular-progress-inner small { font-size: 0.6rem; color: var(--text-muted); font-weight: normal; }
+
+.credit-stats-info { flex: 1; }
+.credit-stats-info h4 { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
+.gpa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gpa-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
+
+/* 績點字體正常化 */
+.gpa-value { 
+  font-size: 1.4rem; 
+  font-weight: normal !important; 
+  color: var(--primary); 
+  display: flex; 
+  align-items: baseline; 
+  gap: 2px; 
+}
+.gpa-max { 
+  font-size: 0.7rem; 
+  color: var(--text-muted); 
+  font-weight: normal !important; 
+}
+
+/* 領域進度條 */
+.domain-list-card { background: var(--card-bg); border-radius: 16px; padding: 12px 16px; margin-bottom: 12px; border: 1px solid var(--border); }
+.domain-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
+.domain-row:last-child { margin-bottom: 0; }
+.domain-name { width: 70px; font-weight: 700; color: var(--text); }
+.domain-bar-bg { flex: 1; height: 6px; background: var(--table-th-bg); border-radius: 3px; margin: 0 10px; overflow: hidden; }
+.domain-bar-fill { height: 100%; background: var(--text-muted); border-radius: 3px; }
+.domain-val { width: 45px; text-align: right; font-size: 0.75rem; color: var(--text-muted); }
+
+/* 舊版/通用進度條元件 */
 .credit-progress-wrap { background: var(--table-th-bg); border-radius: 8px; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); }
 .credit-progress-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; color: var(--text); }
 .credit-progress-bar-bg { width: 100%; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
@@ -1251,27 +1583,7 @@ thead .col-time {
 .credit-chart-container { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 10px; margin-bottom: 12px; }
 .credit-chart-title { font-size: 0.8rem; font-weight: 700; margin-bottom: 10px; color: var(--text); text-align: center; }
 
-.credit-semester-block { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
-.credit-semester-header { background: var(--today-header-bg); color: var(--today-header-text); padding: 8px 10px; font-weight: 700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
-.credit-semester-body { padding: 8px; }
-.credit-course-item { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; background: var(--table-th-bg); padding: 6px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--border); }
-.credit-course-item input, .credit-course-item select { padding: 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
-.credit-course-item .c-name { flex: 2; min-width: 80px; }
-.credit-course-item .c-cat { flex: 1.5; min-width: 70px; }
-.credit-course-item .c-cred { flex: 0.8; min-width: 40px; }
-.credit-course-item .c-score { flex: 0.8; min-width: 40px; }
-.credit-course-item .c-grade { flex: 0.8; min-width: 40px; }
-.credit-course-action { width: 100%; display: flex; justify-content: flex-end; margin-top: 4px; }
-
-/* ================== Credit Calculator Panel ================== */
-.credits-panel { 
-  background: var(--card-bg); 
-  padding: 12px; 
-  border-radius: 8px; 
-  border: 1px solid var(--border); 
-  margin-bottom: 20px;
-}
-
+/* 學期切換與管理 */
 .credit-semester-chips { 
   display: flex; 
   gap: 6px; 
@@ -1308,60 +1620,52 @@ thead .col-time {
   cursor: pointer; 
 }
 
-/* ================== Credit Dashboard UI ================== */
-.credit-top-card { background: var(--card-bg); border-radius: 16px; padding: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border: 1px solid var(--border); }
-.circular-progress-wrap { position: relative; width: 90px; height: 90px; border-radius: 50%; display: flex; justify-content: center; align-items: center; background: conic-gradient(var(--primary) 0%, var(--table-th-bg) 0%); }
-.circular-progress-inner { width: 74px; height: 74px; border-radius: 50%; background: var(--card-bg); display: flex; flex-direction: column; justify-content: center; align-items: center; font-weight: 800; color: var(--text); }
-.circular-progress-inner span { font-size: 1.5rem; line-height: 1; }
-.circular-progress-inner small { font-size: 0.6rem; color: var(--text-muted); font-weight: normal; }
-
-.credit-stats-info { flex: 1; }
-.credit-stats-info h4 { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 8px; }
-.gpa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.gpa-label { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 2px; }
-.gpa-value { font-size: 1.4rem; font-weight: 800; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
-.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: 600; }
-
-.domain-list-card { background: var(--card-bg); border-radius: 16px; padding: 12px 16px; margin-bottom: 12px; border: 1px solid var(--border); }
-.domain-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
-.domain-row:last-child { margin-bottom: 0; }
-.domain-name { width: 70px; font-weight: 700; color: var(--text); }
-.domain-bar-bg { flex: 1; height: 6px; background: var(--table-th-bg); border-radius: 3px; margin: 0 10px; overflow: hidden; }
-.domain-bar-fill { height: 100%; background: var(--text-muted); border-radius: 3px; }
-.domain-val { width: 45px; text-align: right; font-size: 0.75rem; color: var(--text-muted); }
-
-/* Segmented Control for Add Semester */
+/* 分段控制器 (Segmented Control) */
 .segmented-control { display: flex; background: var(--table-th-bg); border-radius: 12px; padding: 4px; gap: 4px; overflow-x: auto; }
 .seg-item { flex: 1; text-align: center; padding: 8px 12px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-radius: 8px; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
 .seg-item.active { background: var(--card-bg); color: var(--text); box-shadow: 0 2px 5px rgba(0,0,0,0.08); }
 
+/* 學分列表與編輯表格 */
+.credit-semester-block { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.credit-semester-header { background: var(--today-header-bg); color: var(--today-header-text); padding: 8px 10px; font-weight: 700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+.credit-semester-body { padding: 8px; }
+
+.credit-course-item { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; background: var(--table-th-bg); padding: 6px; border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--border); }
+.credit-course-item input, .credit-course-item select { padding: 4px; font-size: 0.75rem; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
+.credit-course-item .c-name { flex: 2; min-width: 80px; }
+.credit-course-item .c-cat { flex: 1.5; min-width: 70px; }
+.credit-course-item .c-cred { flex: 0.8; min-width: 40px; }
+.credit-course-item .c-score { flex: 0.8; min-width: 40px; }
+.credit-course-item .c-grade { flex: 0.8; min-width: 40px; }
+.credit-course-action { width: 100%; display: flex; justify-content: flex-end; margin-top: 4px; }
+
+/* 新版表格化排版 (仿圖片設計) */
+.credit-table-container { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card-bg); }
+.credit-table-header { display: flex; background: var(--table-th-bg); border-bottom: 1px solid var(--border); }
+.credit-cell { padding: 12px 4px; border-right: 1px solid var(--border); display: flex; justify-content: center; align-items: center; }
+.credit-cell:last-child { border-right: none; }
+.credit-table-header .credit-cell { color: var(--text-muted); font-size: 0.75rem; font-weight: bold; }
+
+/* 課程無框輸入與按鈕樣式 */
+.clean-input { background: transparent; border: none; outline: none; color: var(--text); font-size: 0.9rem; font-weight: 600; width: 100%; text-align: center; }
+.clean-input.left { text-align: left; padding-left: 4px; }
+.score-btn { background: transparent; border: 1px solid var(--text-muted); border-radius: 6px; padding: 4px 6px; font-weight: bold; font-size: 0.9rem; text-align: center; color: var(--text); cursor: pointer; min-width: 40px; display: inline-flex; justify-content: center; align-items: center; }
+.cat-badge { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 4px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; outline: none; cursor: pointer; width: 100%; text-align: center; appearance: none; -webkit-appearance: none; }
+.grade-info { font-size: 0.9rem; font-weight: bold; color: var(--text); text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
+.grade-info small { font-size: 0.65rem; color: var(--text-muted); font-weight: normal; }
 .grade-input-td input { width: 100%; padding: 4px; font-size: 0.8rem; text-align: center; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); border-radius: 4px; }
-
-/* ================== Credit Calculator Enhancements ================== */
-/* 隱藏數字輸入框上下箭頭 */
-input[type=number]::-webkit-inner-spin-button, 
-input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-input[type=number] { -moz-appearance: textfield; }
-
-/* 績點與標題字體正常化 */
-.gpa-value { font-size: 1.4rem; font-weight: normal !important; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
-.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: normal !important; }
 
 /* 左滑刪除元件 (底色紅、滑動露出) */
 .swipe-container { 
   position: relative; 
   overflow: hidden; 
-  background: #ef4444; /* 設定底色為紅色 */
+  background: #ef4444; 
   border-bottom: 1px solid var(--border);
 }
-.swipe-container:last-child {
-  border-bottom: none;
-}
+.swipe-container:last-child { border-bottom: none; }
 .swipe-delete-btn { 
   position: absolute; 
-  right: 0; 
-  top: 0; 
-  bottom: 0; 
+  right: 0; top: 0; bottom: 0; 
   width: 70px; 
   background: #ef4444; 
   color: white; 
@@ -1377,55 +1681,18 @@ input[type=number] { -moz-appearance: textfield; }
 .swipe-content { 
   display: flex; 
   align-items: stretch; 
-  background: var(--card-bg); /* 表格底層顏色 */
+  background: var(--card-bg); 
   transition: transform 0.2s ease-out; 
   position: relative; 
   z-index: 2; 
-  touch-action: pan-y; /* 確保上下滾動不受影響 */
+  touch-action: pan-y; 
 }
 
-/* 表格化排版 (仿圖片設計) */
-.credit-table-container {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden; 
-  background: var(--card-bg);
-}
-.credit-table-header {
-  display: flex;
-  background: var(--table-th-bg);
-  border-bottom: 1px solid var(--border);
-}
-.credit-cell {
-  padding: 12px 4px;
-  border-right: 1px solid var(--border);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.credit-cell:last-child {
-  border-right: none;
-}
-.credit-table-header .credit-cell {
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: bold;
-}
-
-/* 課程無框輸入樣式 */
-.clean-input { background: transparent; border: none; outline: none; color: var(--text); font-size: 0.9rem; font-weight: 600; width: 100%; text-align: center; }
-.clean-input.left { text-align: left; padding-left: 4px; }
-.score-btn { background: transparent; border: 1px solid var(--text-muted); border-radius: 6px; padding: 4px 6px; font-weight: bold; font-size: 0.9rem; text-align: center; color: var(--text); cursor: pointer; min-width: 40px; display: inline-flex; justify-content: center; align-items: center; }
-.cat-badge { background: transparent; color: var(--text-muted); border: 1px solid var(--border); padding: 4px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; outline: none; cursor: pointer; width: 100%; text-align: center; appearance: none; -webkit-appearance: none; }
-.grade-info { font-size: 0.9rem; font-weight: bold; color: var(--text); text-align: center; display: flex; flex-direction: column; line-height: 1.2; }
-.grade-info small { font-size: 0.65rem; color: var(--text-muted); font-weight: normal; }
-
-/* 全新設定頁面樣式 */
+/* 全新設定頁面樣式 (使用 Grid 自動對齊) */
 .setting-domain-card { background: var(--table-th-bg); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; border: 1px solid var(--border); }
-/* --- 將排列方式改為 Grid，讓所有輸入框完美貼齊垂直格線 --- */
 .setting-domain-row { 
   display: grid; 
-  /* 設定格線欄位比例：打勾(20px) | 名稱(自動填滿) | 數字格子(70px) | 刪除鈕(24px) */
+  /* 打勾(20px) | 名稱(自動填滿) | 數字格子(70px) | 刪除鈕(24px) */
   grid-template-columns: 20px 1fr 70px 24px; 
   align-items: center; 
   gap: 12px; 
@@ -1439,95 +1706,106 @@ input[type=number] { -moz-appearance: textfield; }
 
 .setting-input-clean { width: 100%; background: transparent; border: none; color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; }
 
-/* --- 將原本只有底線的固定大小，改成隨 Grid 自動縮放的實體方格 --- */
 .setting-target-input { 
-  width: 100%; 
-  max-width: 80px; /* 在頂部總目標區塊防無限制拉伸 */
-  text-align: center; 
-  background: var(--input-bg); 
-  border: 1px solid var(--border); 
-  border-radius: 6px;
-  color: var(--text); 
-  font-size: 0.9rem; 
-  font-weight: 700; 
-  outline: none; 
-  padding: 4px 6px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%; max-width: 80px; text-align: center; 
+  background: var(--input-bg); border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); font-size: 0.9rem; font-weight: 700; outline: none; 
+  padding: 4px 6px; transition: border-color 0.2s, box-shadow 0.2s;
 }
-/* 點擊輸入時的高光反饋 */
-.setting-target-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--today-header-bg);
-}
-
+.setting-target-input:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--today-header-bg); }
 .setting-icon-btn { background: transparent; border: none; color: #ef4444; font-size: 1rem; cursor: pointer; padding: 4px; display: flex; justify-content: center; align-items: center; }
-/* 選擇學期彈窗 */
+
+/* 學期彈窗切換項目 */
 .sem-switch-item { padding: 12px; border-bottom: 1px solid var(--border); text-align: center; font-size: 1rem; font-weight: 700; cursor: pointer; }
 .sem-switch-item:active { background: var(--slot-hover); }
 
-/* 績點字體正常化 */
-.gpa-value { font-size: 1.4rem; font-weight: normal !important; color: var(--primary); display: flex; align-items: baseline; gap: 2px; }
-.gpa-max { font-size: 0.7rem; color: var(--text-muted); font-weight: normal !important; }
+/* =========================================
+   26. 好友連線與訊息通知 (Friends Connect)
+   ========================================= */
+.friend-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.friend-card { background: var(--table-th-bg); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+.friend-info { display: flex; flex-direction: column; gap: 2px; }
+.friend-name { font-weight: 700; font-size: 0.85rem; color: var(--text); }
+.friend-email { font-size: 0.7rem; color: var(--text-muted); }
 
-/* ================== 齒輪按鈕 & 底部操作選單 ================== */
-.gear-action-btn {
-  background: transparent;
-  border: none;
-  font-size: 1.25rem;
-  color: var(--text-muted);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  outline: none;
-  transition: transform 0.2s, color 0.2s;
+.msg-card { background: var(--today-header-bg); border: 1px solid var(--primary); padding: 8px 10px; border-radius: 6px; margin-bottom: 8px; font-size: 0.8rem; }
+.common-empty { background-color: rgba(34, 197, 94, 0.25) !important; border: 2px dashed #22c55e !important; box-shadow: inset 0 0 5px rgba(34, 197, 94, 0.5); }
+.viewing-friend-banner { background: var(--primary); color: white; font-weight: bold; text-align: center; padding: 6px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; }
+
+/* =========================================
+   27. 全局系統通知 (Toast Notification)
+   ========================================= */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  z-index: 9999;
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  pointer-events: none;
 }
-.gear-action-btn:active {
-  transform: scale(0.85) rotate(45deg);
-  color: var(--primary);
+.toast.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+.toast.error { background: #ef4444; }
+.toast.success { background: #10b981; }
+
+/* =========================================
+   28. 啟動畫面與動畫 (Splash Screen)
+   ========================================= */
+#splash-screen {
+  position: fixed; top: 0; left: 0; 
+  width: 100vw; height: 100vh; 
+  background-color: #0f172a; 
+  display: flex; justify-content: center; align-items: center; 
+  z-index: 99999; 
+  transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+#splash-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+
+.splash-content { text-align: center; color: #ffffff; }
+.splash-icon-container { position: relative; width: 120px; height: 120px; margin: 0 auto 16px auto; display: flex; justify-content: center; align-items: center; }
+
+.clock {
+  position: absolute; top: 0; left: 0; 
+  width: 120px; height: 120px; 
+  border: 4px solid #0284c7; border-radius: 50%; 
+  opacity: 0; z-index: 2; 
+  animation: fadeIn 0.3s forwards, clockFadeOnly 0.2s forwards 1.5s;
+}
+.hand {
+  position: absolute; top: 50%; left: 50%; 
+  width: 4px; height: 45px; 
+  background: white; transform-origin: bottom center; 
+  margin-top: -45px; margin-left: -2px; 
+  animation: spinFast 1.5s cubic-bezier(0.5, 0, 0.5, 1) forwards;
+}
+.splash-icon {
+  width: 120px; height: 120px; position: relative; z-index: 1; 
+  animation: popIn 0.8s forwards 1.5s; opacity: 0;
+}
+.splash-title {
+  font-size: 2rem; font-weight: 900; letter-spacing: 2px; color: #ffffff; 
+  opacity: 0; animation: textSlideUp 0.8s forwards 1.7s;
 }
 
-.action-menu-btn {
-  width: 100%;
-  padding: 14px;
-  margin-bottom: 8px;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  background: var(--table-th-bg);
-  color: var(--text);
-  transition: background 0.2s, transform 0.1s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.action-menu-btn:active {
-  background: var(--border);
-  transform: scale(0.98);
-}
-.action-menu-btn.danger {
-  color: #ef4444;
-  background: #fee2e2;
-}
-.action-menu-btn.danger:active {
-  background: #fecaca;
-}
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes spinFast { 0% { transform: rotate(0deg); } 100% { transform: rotate(1440deg); opacity: 0; } }
+@keyframes clockFadeOnly { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes textSlideUp { 0% { transform: translateY(20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
 
-/* 強制底部滑出樣式 */
-.bottom-sheet {
-  border-radius: 20px 20px 0 0 !important;
-  align-self: flex-end;
-  margin: 0 !important;
-  width: 100%;
-  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
-  animation: slideUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-}
-
-/* ================= 自訂日曆元件 (亞克力浮雕版) ================= */
+/* =========================================
+   29. 自訂日曆元件 (Custom DatePicker - Acrylic 浮雕版)
+   ========================================= */
 .custom-dp-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(0,0,0,0.3); display: none;
@@ -1536,37 +1814,30 @@ input[type=number] { -moz-appearance: textfield; }
 }
 .custom-dp-overlay.active { display: flex; opacity: 1; }
 
-/* 1. 外凸浮雕容器 */
+/* 外凸浮雕容器 */
 .custom-dp-container {
   width: 320px; padding: 20px; box-sizing: border-box;
   background: var(--card-bg); color: var(--text);
   border-radius: 20px; border: none;
-  /* 核心浮雕陰影：右下暗色，左上微亮色 (適應深淺色主題) */
   box-shadow: 8px 8px 16px rgba(0,0,0,0.1), -8px -8px 16px rgba(255,255,255,0.05);
   transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .custom-dp-overlay.active .custom-dp-container { transform: scale(1); }
+.custom-dp-bottom { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+.custom-dp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 
-.custom-dp-bottom { 
-  display: flex; justify-content: space-between; align-items: center; 
-  margin-top: 20px; 
-}
-
-/* 2. 外凸浮雕按鈕 (模式切換與左右箭頭) */
+/* 外凸浮雕按鈕 */
 .custom-dp-toggle, .custom-dp-nav {
   background: var(--card-bg); border: none;
   color: var(--text); padding: 6px 12px; border-radius: 10px;
   font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: 0.2s;
   box-shadow: 4px 4px 8px rgba(0,0,0,0.08), -4px -4px 8px rgba(255,255,255,0.05);
 }
-/* 點擊時變成內凹 */
 .custom-dp-toggle:active, .custom-dp-nav:active { 
   box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1), inset -2px -2px 5px rgba(255,255,255,0.05);
 }
 
-.custom-dp-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-
-/* 3. 內凹浮雕選單 (年月下拉) */
+/* 內凹浮雕選單 */
 .custom-dp-selects select {
   background: var(--input-bg); border: none;
   color: var(--text); font-weight: 700; font-size: 0.95rem;
@@ -1577,50 +1848,30 @@ input[type=number] { -moz-appearance: textfield; }
 .custom-dp-week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; font-weight: bold; }
 .custom-dp-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
 
-/* 4. 日曆網格浮雕設定 */
+/* 日曆網格浮雕設定 */
 .custom-dp-cell {
   aspect-ratio: 1; display: flex; justify-content: center; align-items: center;
   font-size: 0.9rem; font-weight: 600; cursor: pointer; border-radius: 10px; 
   transition: 0.2s; background: var(--card-bg); border: none;
 }
-/* 懸停微凸 */
-.custom-dp-cell:hover { 
-  box-shadow: 2px 2px 5px rgba(0,0,0,0.08), -2px -2px 5px rgba(255,255,255,0.05); 
-}
-/* 選中時重度內凹並上色 */
-.custom-dp-cell.selected { 
-  background: var(--primary); color: #fff; font-weight: bold; 
-  box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2), inset -3px -3px 6px rgba(255,255,255,0.1); 
-}
+.custom-dp-cell:hover { box-shadow: 2px 2px 5px rgba(0,0,0,0.08), -2px -2px 5px rgba(255,255,255,0.05); }
+.custom-dp-cell.selected { background: var(--primary); color: #fff; font-weight: bold; box-shadow: inset 3px 3px 6px rgba(0,0,0,0.2), inset -3px -3px 6px rgba(255,255,255,0.1); }
 
-/* ================= 5. 手動輸入區 (內凹槽) ================= */
+/* 手動輸入區 (內凹槽) */
 .custom-dp-manual { display: none; flex-direction: column; gap: 20px; padding: 10px 0; }
 .custom-dp-input-group {
   display: flex; justify-content: center; align-items: center;
-  background: var(--input-bg); border: none;
-  border-radius: 12px; padding: 15px;
-  /* 強烈的內凹陰影，做出挖空的感覺 */
+  background: var(--input-bg); border: none; border-radius: 12px; padding: 15px;
   box-shadow: inset 4px 4px 8px rgba(0,0,0,0.1), inset -4px -4px 8px rgba(255,255,255,0.05);
 }
-.custom-dp-input-group input {
-  background: transparent; border: none; outline: none; padding: 0;
-  color: var(--text); font-size: 1.2rem; font-weight: 700; text-align: center;
-}
+.custom-dp-input-group input { background: transparent; border: none; outline: none; padding: 0; color: var(--text); font-size: 1.2rem; font-weight: 700; text-align: center; }
 .custom-dp-input-group input::placeholder { color: var(--text-muted); opacity: 0.4; }
 .custom-dp-input-group span { font-size: 1.2rem; color: var(--text-muted); font-weight: 300; margin: 0 5px; }
 
-/* 確定按鈕外凸 */
 .custom-dp-confirm {
   width: 100%; padding: 12px; border-radius: 12px;
   background: var(--primary); color: #fff; font-size: 1rem; font-weight: bold;
   border: none; cursor: pointer; transition: 0.2s;
   box-shadow: 4px 4px 8px rgba(0,0,0,0.15), -4px -4px 8px rgba(255,255,255,0.05);
 }
-.custom-dp-confirm:active { 
-  transform: scale(0.98); 
-  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2); 
-}
-
-/* 全局隱藏原生日期選擇器圖示，並修正鼠標 */
-input[type="date"]::-webkit-calendar-picker-indicator { display: none; }
-input[type="date"] { cursor: pointer; user-select: none; }
+.custom-dp-confirm:active { transform: scale(0.98); box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2); }
