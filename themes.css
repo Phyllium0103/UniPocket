@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light dark;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --bg: #f8fafc;
