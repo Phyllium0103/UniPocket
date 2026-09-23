@@ -755,7 +755,23 @@ async function fetchMessages() {
                     // 自動處理同意類的訊息
                     if (m.type === 'peek') {
                         if (!state.peekCounts) state.peekCounts = {};
-                        state.peekCounts[m.sender_id] = (state.peekCounts[m.sender_id] || 0) + 1;
+                        const todayStr = formatDate(new Date());
+                        
+                        // 讀取目前的紀錄（兼容舊版純數字的防呆）
+                        let currentRecord = state.peekCounts[m.sender_id];
+                        if (typeof currentRecord !== 'object' || currentRecord === null) {
+                            currentRecord = { count: 0, date: todayStr };
+                        }
+                        
+                        // 判斷是否為今天，不是的話就重置為 1，是的話就 +1
+                        if (currentRecord.date !== todayStr) {
+                            currentRecord = { count: 1, date: todayStr };
+                        } else {
+                            currentRecord.count += 1;
+                        }
+                        
+                        state.peekCounts[m.sender_id] = currentRecord;
+                        
                         m.status = 'completed';
                         await supabaseClient.from('user_messages').update({ status: 'completed' }).eq('id', m.id);
                         needsSave = true;
@@ -6933,11 +6949,24 @@ async function viewFriendSchedule(fId, fName) {
 
             // 取得對方偷窺我的次數
             if (!state.peekCounts) state.peekCounts = {};
-            let peekCount = state.peekCounts[fId] || 0;
+            const todayStr = formatDate(new Date());
+            let peekRecord = state.peekCounts[fId];
+            let peekCount = 0;
             
-            // 加入元素存在檢查，防止報錯導致跳入 catch 區塊
+            if (peekRecord) {
+                // 如果是舊版(純數字)資料，或是日期不是今天，就立刻歸零並存檔
+                if (typeof peekRecord !== 'object' || peekRecord.date !== todayStr) {
+                    state.peekCounts[fId] = { count: 0, date: todayStr };
+                    saveToStorage(); // 發現不是今天就存檔覆寫
+                    peekCount = 0;
+                } else {
+                    peekCount = peekRecord.count;
+                }
+            }
+
+            // 加入元素存在檢查，並在文案加上「今日」
             const titleEl = document.getElementById("friend-view-title");
-            if (titleEl) titleEl.innerText = `${fName}偷窺了你${peekCount}次`;
+            if (titleEl) titleEl.innerText = `今日 ${fName} 偷窺了你 ${peekCount} 次`;
             
             const bannerEl = document.getElementById("friend-view-banner");
             if (bannerEl) bannerEl.style.display = "flex";
