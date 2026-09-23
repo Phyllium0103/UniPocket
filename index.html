@@ -69,12 +69,10 @@
   <!-- 1. 課表檢視 -->
   <main id="schedule-view">
     <div id="friend-view-banner" class="viewing-friend-banner" style="display:none;">
-      <span id="friend-view-title">正在查看好友課表</span>
-      <div>
-        <label style="font-size:0.7rem; cursor:pointer; margin-right:8px;">
-          <input type="checkbox" id="chk-intersection" onchange="toggleIntersection()"> 顯示空堂交集
-        </label>
-        <button class="btn btn-danger" style="padding:2px 6px; font-size:0.7rem;" onclick="exitFriendView()">返回我的課表</button>
+      <span id="friend-view-title" style="flex:1; text-align:left;"></span>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <button id="btn-toggle-intersection" class="btn btn-secondary" style="padding:2px 6px; font-size:0.75rem; border:none; background:rgba(255,255,255,0.2); color:white;" onclick="toggleIntersectionBtn()">□空堂</button>
+        <button class="btn" style="padding:2px 6px; font-size:1rem; background:transparent; color:white; border:none;" onclick="exitFriendView()">❌</button>
       </div>
     </div>
 
@@ -1564,7 +1562,8 @@
 
       <!-- 底部：模式切換與今天按鈕 -->
       <div class="custom-dp-bottom">
-        <button class="custom-dp-toggle" id="custom-dp-toggle-btn" onclick="toggleCustomDpMode()">⌨️ 手動輸入</button>
+        <button class="custom-dp-toggle" id="custom-dp-toggle-btn" onclick="toggleCustomDpMode()">手動輸入</button>
+        <button class="custom-dp-toggle" onclick="jumpToCurrentScheduleStart()">目前課表</button>
         <button class="custom-dp-toggle" onclick="jumpCustomDpToToday()">今天</button>
       </div>
 

@@ -178,6 +178,7 @@ function createDefaultState() {
     const dId = "sch_" + Date.now();
     return {
         themeMode: "light",
+        peekCounts: {},
         themeStyle: "light-swiss-blue",
         fontFamily: "default",
         lastLightStyle: "light-swiss-blue",
@@ -752,6 +753,14 @@ async function fetchMessages() {
             for (let m of userMessages) {
                 if (m.receiver_id === currentUser.id && m.status === 'unread') {
                     // 自動處理同意類的訊息
+                    if (m.type === 'peek') {
+                        if (!state.peekCounts) state.peekCounts = {};
+                        state.peekCounts[m.sender_id] = (state.peekCounts[m.sender_id] || 0) + 1;
+                        m.status = 'completed';
+                        await supabaseClient.from('user_messages').update({ status: 'completed' }).eq('id', m.id);
+                        needsSave = true;
+                        continue;
+                    }
                     if (m.type === 'request_accept') {
                         const rec = state.finances.find(f => f.id === m.payload.sourceId);
                         if (rec) rec.isPending = false;
@@ -1719,6 +1728,7 @@ window.switchDetailTab = function(tabId) {
             }
         }
     });
+    if (tabId === 'notes') autoExpandTextareasInModal();
 };
 
 // 標記出缺席
@@ -2570,6 +2580,38 @@ function changeWeek(offset) {
     if (typeof renderSchedule === 'function') renderSchedule(); 
 }
 
+// 跳轉至當前選擇課表的第一天
+window.jumpToCurrentScheduleStart = function() {
+    triggerHaptic(15);
+    const sch = getTargetSchedule();
+    if (sch && sch.startDate) {
+        const dateObj = parseLocalDate(sch.startDate);
+        if (!isNaN(dateObj.getTime())) {
+            customDpYear = dateObj.getFullYear();
+            customDpMonth = dateObj.getMonth();
+            
+            // 直接呼叫 selectCustomDpDate 進行選取並自動關閉日曆視窗
+            selectCustomDpDate(sch.startDate);
+            
+            // 如果原本在手動輸入模式，幫忙切回網格模式
+            if (isCustomDpManual) {
+                toggleCustomDpMode(false);
+            }
+        }
+    }
+};
+
+// 自動偵測並展開彈跳視窗內的 textarea
+window.autoExpandTextareasInModal = function() {
+    setTimeout(() => {
+        const textareas = document.querySelectorAll('#view-detail-modal textarea');
+        textareas.forEach(ta => {
+            ta.style.height = 'auto';
+            ta.style.height = (ta.scrollHeight) + 'px';
+        });
+    }, 50);
+};
+
 window.jumpToDate = function(dateStr) {
     if (!dateStr) return;
     const targetDate = parseLocalDate(dateStr);
@@ -2611,27 +2653,23 @@ function handleSlotClick(day, periodId) {
 
 function handleTutoringClick(tId) { 
     triggerHaptic(15); 
+    const sch = getTargetSchedule(); // 改為 getTargetSchedule 以支援抓取好友資料
+    const tut = (sch.tutorings || []).find((t) => t.id === tId); 
     if (isViewingFriend) { 
-        const sch = getTargetSchedule(); 
-        const tut = sch.tutorings.find(t => t.id === tId); 
         openLeaveNoteModal(tut ? tut.day : "", tId); 
         return; 
-    } 
-    const sch = getActiveSchedule(); 
-    const tut = (sch.tutorings || []).find((t) => t.id === tId); 
+    }
     if (tut) openViewDetailModal("tutoring", { tut }); 
 }
 
 function handleWorkClick(wId) { 
     triggerHaptic(15); 
+    const sch = getTargetSchedule(); // 改為 getTargetSchedule 以支援抓取好友資料
+    const work = (sch.works || []).find((w) => w.id === wId); 
     if (isViewingFriend) { 
-        const sch = getTargetSchedule(); 
-        const work = sch.works.find(w => w.id === wId); 
         openLeaveNoteModal(work ? work.day : "", wId); 
         return; 
-    } 
-    const sch = getActiveSchedule(); 
-    const work = (sch.works || []).find((w) => w.id === wId); 
+    }
     if (work) openViewDetailModal("work", { work }); 
 }
 
@@ -3015,13 +3053,21 @@ function renderOriginalSchedule() {
         weekEnd.setDate(monday.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
+        // 【修復 1】將調課分為「目標是本週 (渲染用)」與「來源是本週 (隱藏原課程用)」
         const currentWeekOverrides = (sch.overrides || []).filter(o => {
             const td = parseLocalDate(o.targetDate);
             return td >= weekStart && td <= weekEnd;
         });
 
-        const overriddenSourceIds = new Set(currentWeekOverrides.map((o) => o.sourceId));
-        const overriddenCourseKeys = new Set(currentWeekOverrides.filter((o) => o.type === "school").map((o) => o.sourceKey));
+        const sourceThisWeekOverrides = (sch.overrides || []).filter(o => {
+            // 兼容舊資料：若沒有 sourceDate，退回使用 targetDate
+            const sd = o.sourceDate ? parseLocalDate(o.sourceDate) : parseLocalDate(o.targetDate);
+            return sd >= weekStart && sd <= weekEnd;
+        });
+
+        // 隱藏原課程的判斷改用 sourceThisWeekOverrides
+        const overriddenSourceIds = new Set(sourceThisWeekOverrides.map((o) => o.sourceId));
+        const overriddenCourseKeys = new Set(sourceThisWeekOverrides.filter((o) => o.type === "school").map((o) => o.sourceKey));
 
         const combinedGrid = Array.from({ length: maxDays + 1 }, () => []);
         const morningGrid = Array.from({ length: maxDays + 1 }, () => []); 
@@ -3282,8 +3328,8 @@ function renderOriginalSchedule() {
                     e.stopPropagation(); 
                     handleSlotClick(d, p.id); 
                 };
-                
-                if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end))) {
+                const currentCellDateStr = weekDates[d - 1];
+                if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end), currentCellDateStr)) {
                     slotDiv.style.background = "#dcfce7"; 
                     slotDiv.style.border = "1px solid #22c55e";
                 }
@@ -3516,13 +3562,21 @@ function render24HourSchedule() {
         weekEnd.setDate(monday.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
+        // 【修復 1】將調課分為「目標是本週 (渲染用)」與「來源是本週 (隱藏原課程用)」
         const currentWeekOverrides = (sch.overrides || []).filter(o => {
             const td = parseLocalDate(o.targetDate);
             return td >= weekStart && td <= weekEnd;
         });
 
-        const overriddenSourceIds = new Set(currentWeekOverrides.map((o) => o.sourceId));
-        const overriddenCourseKeys = new Set(currentWeekOverrides.filter((o) => o.type === "school").map((o) => o.sourceKey));
+        const sourceThisWeekOverrides = (sch.overrides || []).filter(o => {
+            // 兼容舊資料：若沒有 sourceDate，退回使用 targetDate
+            const sd = o.sourceDate ? parseLocalDate(o.sourceDate) : parseLocalDate(o.targetDate);
+            return sd >= weekStart && sd <= weekEnd;
+        });
+
+        // 隱藏原課程的判斷改用 sourceThisWeekOverrides
+        const overriddenSourceIds = new Set(sourceThisWeekOverrides.map((o) => o.sourceId));
+        const overriddenCourseKeys = new Set(sourceThisWeekOverrides.filter((o) => o.type === "school").map((o) => o.sourceKey));
 
         const fragment = document.createDocumentFragment();
 
@@ -3546,7 +3600,7 @@ function render24HourSchedule() {
                 
                 const noteBadge = getNoteBadgeHtml(d, p.id);
                 
-                if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end))) {
+                if (isViewingFriend && showIntersection && isMyTimeFree(d, timeToMinutes(p.start), timeToMinutes(p.end), currentCellDateStr)) {
                     slotDiv.style.background = "#dcfce7"; 
                     slotDiv.style.border = "1px solid #22c55e";
                 }
@@ -4046,7 +4100,39 @@ function openViewDetailModal(type, payload, activeTab = 'info') {
             };
             
         } else if (type === "override" && !hasTabs) {
-            infoHtml = `<div class="detail-card"><div class="detail-label">目標時間</div><div class="detail-value">${timeText}</div>`;
+            let html = `<div class="detail-card">`;
+
+            // 判斷調課來源是否為家教，套用與圖片完全相同的排版
+            if (overrideObj.type === "tutoring") {
+                const tut = (sch.tutorings || []).find(t => t.id === overrideObj.sourceId) || {};
+                html += `<div class="detail-label" style="color:var(--primary);">調課後時間</div><div class="detail-value" style="font-weight:700;">${timeText}</div>`;
+                html += `<div class="detail-label">原定時間</div><div class="detail-value" style="text-decoration: line-through; opacity: 0.7;">${dayNames[Number(tut.day)]} ${tut.startTime} ~ ${tut.endTime}</div>`;
+                if (tut.subject) html += `<div class="detail-label">科目</div><div class="detail-value">${escapeHtml(tut.subject)}</div>`;
+                if (tut.location) html += `<div class="detail-label">地點</div><div class="detail-value">${escapeHtml(tut.location)}</div>`;
+                if (tut.line) html += `<div class="detail-label">Line ID</div><div class="detail-value">${escapeHtml(tut.line)}</div>`;
+                if (tut.fb) html += `<div class="detail-label">Facebook</div><div class="detail-value">${escapeHtml(tut.fb)}</div>`;
+                if (tut.phone) html += `<div class="detail-label">電話</div><div class="detail-value">${escapeHtml(tut.phone)}</div>`;
+                if (tut.rate) html += `<div class="detail-label">收費時薪</div><div class="detail-value">$${escapeHtml(tut.rate)} / hr</div>`;
+            
+            // 判斷調課來源是否為工作，套用專屬排版
+            } else if (overrideObj.type === "work") {
+                const work = (sch.works || []).find(w => w.id === overrideObj.sourceId) || {};
+                html += `<div class="detail-label" style="color:var(--primary);">調課後時間</div><div class="detail-value" style="font-weight:700;">${timeText}</div>`;
+                html += `<div class="detail-label">原定時間</div><div class="detail-value" style="text-decoration: line-through; opacity: 0.7;">${dayNames[Number(work.day)]} ${work.startTime} ~ ${work.endTime}</div>`;
+                if (work.location) html += `<div class="detail-label">地點</div><div class="detail-value">${escapeHtml(work.location)}</div>`;
+                if (work.rate) html += `<div class="detail-label">工作時薪</div><div class="detail-value">$${escapeHtml(work.rate)} / hr</div>`;
+            
+            // 其他未知的調課類型
+            } else {
+                html += `<div class="detail-label">目標時間</div><div class="detail-value">${timeText}</div>`;
+            }
+
+            if (overrideObj.memo) html += `<div class="detail-label">調課備註</div><div class="detail-value">${escapeHtmlWithBr(overrideObj.memo)}</div>`;
+            html += `</div>`;
+            
+            bodyEl.innerHTML = html;
+            
+        } else if (type === "temp_event") {
             if (overrideObj.memo) infoHtml += `<div class="detail-label">備註</div><div class="detail-value">${escapeHtmlWithBr(overrideObj.memo)}</div>`;
             infoHtml += `</div>`;
             bodyEl.innerHTML = infoHtml;
@@ -4069,6 +4155,27 @@ function openViewDetailModal(type, payload, activeTab = 'info') {
         }
     }
     document.getElementById("view-detail-modal").classList.add("active");
+    if (isViewingFriend) {
+        switchBtn.innerText = "💬";
+        switchBtn.title = "留便利貼";
+        switchBtn.style.fontSize = "1.1rem";
+        if (type === "school") {
+             switchBtn.onclick = () => { closeModal("view-detail-modal"); openLeaveNoteModal(payload.day, payload.periodId); };
+        } else if (type === "tutoring") {
+             switchBtn.onclick = () => { closeModal("view-detail-modal"); openLeaveNoteModal(payload.tut.day, payload.tut.id); };
+        } else if (type === "work") {
+             switchBtn.onclick = () => { closeModal("view-detail-modal"); openLeaveNoteModal(payload.work.day, payload.work.id); };
+        } else {
+             switchBtn.style.display = "none";
+        }
+    } else {
+        switchBtn.innerText = "⚙️";
+        switchBtn.title = "進入編輯";
+        switchBtn.style.fontSize = "1.25rem";
+    }
+
+    document.getElementById("view-detail-modal").classList.add("active");
+    autoExpandTextareasInModal();
 }
 
 function revertCurrentOverride() { 
@@ -4538,7 +4645,18 @@ function saveTutoringClass() {
 
 function deleteTutoringClass() { 
     showConfirm("刪除此家教？", () => { 
-        getActiveSchedule().tutorings = getActiveSchedule().tutorings.filter(t => t.id !== currentEditingTutoringId); 
+        const sch = getActiveSchedule();
+        sch.tutorings = sch.tutorings.filter(t => t.id !== currentEditingTutoringId); 
+        
+        // 【修復 4】深度清理遺留的備忘錄 (Weekly Memos)
+        if (sch.weeklyMemos) {
+            Object.keys(sch.weeklyMemos).forEach(weekKey => {
+                if (sch.weeklyMemos[weekKey][`tut_${currentEditingTutoringId}`]) {
+                    delete sch.weeklyMemos[weekKey][`tut_${currentEditingTutoringId}`];
+                }
+            });
+        }
+        
         saveToStorage(); 
         renderSchedule(); 
         closeModal("tutoring-modal"); 
@@ -4627,14 +4745,24 @@ function saveWorkClass() {
 
 function deleteWorkClass() { 
     showConfirm("刪除此工作排程？", () => { 
-        getActiveSchedule().works = getActiveSchedule().works.filter((w) => w.id !== currentEditingWorkId); 
+        const sch = getActiveSchedule();
+        sch.works = sch.works.filter((w) => w.id !== currentEditingWorkId); 
+        
+        // 【修復 4】深度清理遺留的備忘錄 (Weekly Memos)
+        if (sch.weeklyMemos) {
+            Object.keys(sch.weeklyMemos).forEach(weekKey => {
+                if (sch.weeklyMemos[weekKey][`work_${currentEditingWorkId}`]) {
+                    delete sch.weeklyMemos[weekKey][`work_${currentEditingWorkId}`];
+                }
+            });
+        }
+        
         saveToStorage(); 
         renderSchedule(); 
         closeModal("work-modal"); 
         showToast("已刪除工作排程"); 
     }); 
 }
-
 // ========================================================
 // 臨時事件與調課 Modal
 // ========================================================
@@ -4798,7 +4926,9 @@ function openOverrideModal(id = null) {
             document.getElementById("ovr-delete-btn").style.display = "inline-flex"; 
         } 
     } else { 
-        document.getElementById("ovr-target-date").value = formatDate(new Date()); 
+        const viewingDate = new Date();
+        viewingDate.setDate(viewingDate.getDate() + currentWeekOffset * 7);
+        document.getElementById("ovr-target-date").value = formatDate(viewingDate); 
         document.getElementById("ovr-start-time").value = "18:00"; 
         document.getElementById("ovr-end-time").value = "20:00"; 
         document.getElementById("ovr-memo").value = ""; 
@@ -4837,11 +4967,28 @@ function saveClassOverride() {
     const sch = getActiveSchedule(); 
     const title = document.getElementById("ovr-source-select").options[document.getElementById("ovr-source-select").selectedIndex].text.split("] ")[1];
     
+    // 【修復 1】計算原課程的日期 (sourceDate)
+    const monday = getMondayOfWeek(new Date(), currentWeekOffset);
+    let sourceDay = 1;
+    if (type === "school") {
+        sourceDay = Number(sourceIdOrKey.split('_')[0]);
+    } else if (type === "tutoring") {
+        const t = (sch.tutorings || []).find(x => x.id === sourceIdOrKey);
+        if (t) sourceDay = Number(t.day);
+    } else if (type === "work") {
+        const w = (sch.works || []).find(x => x.id === sourceIdOrKey);
+        if (w) sourceDay = Number(w.day);
+    }
+    const sourceDateObj = new Date(monday);
+    sourceDateObj.setDate(monday.getDate() + (sourceDay - 1));
+    const sourceDate = formatDate(sourceDateObj);
+
     const obj = { 
         id: currentEditingOverrideId || "ovr_" + Date.now(), 
         type, 
         sourceKey: type === "school" ? sourceIdOrKey : undefined, 
         sourceId: type !== "school" ? sourceIdOrKey : undefined, 
+        sourceDate: sourceDate, // 新增記錄原定日期
         title, 
         targetDate, 
         startTime, 
@@ -6763,21 +6910,44 @@ function catDelete(t, p, i) {
 
 async function viewFriendSchedule(fId, fName) {
     try {
-        const { data } = await supabaseClient.from("user_schedules").select("data").eq("user_id", fId).single();
+        const { data, error } = await supabaseClient.from("user_schedules").select("data").eq("user_id", fId).maybeSingle();
+        
+        if (error) {
+            throw error;
+        }
+
         if (data && data.data) {
             isViewingFriend = true; 
             viewingFriendId = fId; 
             friendState = data.data; 
             showIntersection = false;
             
-            const chkIntersection = document.getElementById("chk-intersection"); 
-            if (chkIntersection) chkIntersection.checked = false;
+            // 隱藏右下角加號按鈕
+            const scheduleFab = document.getElementById("schedule-fab-container");
+            if (scheduleFab) scheduleFab.style.display = "none";
             
-            document.getElementById("friend-view-title").innerText = `👀 正在查看 ${fName} 的課表`;
-            document.getElementById("friend-view-banner").style.display = "flex";
+            // 發送偷窺通知
+            if (currentUser && fId !== currentUser.id) {
+                supabaseClient.from('user_messages').insert({ sender_id: currentUser.id, receiver_id: fId, type: 'peek', payload: {} }).then(() => {}).catch((e)=>{ console.error("Peek event error", e); });
+            }
+
+            // 取得對方偷窺我的次數
+            if (!state.peekCounts) state.peekCounts = {};
+            let peekCount = state.peekCounts[fId] || 0;
             
-            const fab = document.getElementById("main-fab-container"); 
-            if (fab) fab.style.display = "none";
+            // 加入元素存在檢查，防止報錯導致跳入 catch 區塊
+            const titleEl = document.getElementById("friend-view-title");
+            if (titleEl) titleEl.innerText = `${fName}偷窺了你${peekCount}次`;
+            
+            const bannerEl = document.getElementById("friend-view-banner");
+            if (bannerEl) bannerEl.style.display = "flex";
+            
+            // 重置空堂按鈕狀態
+            const btn = document.getElementById("btn-toggle-intersection");
+            if(btn) {
+                btn.innerText = "□空堂";
+                btn.style.background = "rgba(255,255,255,0.2)";
+            }
             
             switchView('schedule'); 
             renderSchedule();
@@ -6789,7 +6959,6 @@ async function viewFriendSchedule(fId, fName) {
         showToast("網路錯誤，無法取得好友資料", "error"); 
     }
 }
-
 function exitFriendView() { 
     isViewingFriend = false; 
     viewingFriendId = null; 
@@ -6797,11 +6966,26 @@ function exitFriendView() {
     showIntersection = false; 
     
     document.getElementById("friend-view-banner").style.display = "none"; 
-    const fab = document.getElementById("main-fab-container"); 
-    if (fab) fab.style.display = "flex";
+    
+    // 恢復右下角加號按鈕
+    const scheduleFab = document.getElementById("schedule-fab-container");
+    if (scheduleFab) scheduleFab.style.display = "flex";
     
     renderSchedule(); 
 }
+
+window.toggleIntersectionBtn = function() {
+    showIntersection = !showIntersection;
+    const btn = document.getElementById("btn-toggle-intersection");
+    if (showIntersection) {
+        btn.innerText = "☑空堂";
+        btn.style.background = "rgba(255,255,255,0.4)";
+    } else {
+        btn.innerText = "□空堂";
+        btn.style.background = "rgba(255,255,255,0.2)";
+    }
+    renderSchedule();
+};
 
 window.deleteStickyNote = function() {
     if (!currentReadingNoteId) return;
@@ -6818,35 +7002,51 @@ function isMyTimeFree(day, startMins, endMins, dateStr) {
     const s = state.schedules.find(x => x.id === state.activeScheduleId) || state.schedules[0]; 
     if (!s) return true;
 
+    // 【進階修復】找出在 dateStr 這天「被調走」的課程與事件，這些時段應該要算成空堂！
+    const overriddenKeys = new Set();
+    const overriddenIds = new Set();
+    if (dateStr) {
+        (s.overrides || []).forEach(o => {
+            const sd = o.sourceDate || o.targetDate; // 兼容舊資料
+            if (sd === dateStr) {
+                if (o.type === 'school') overriddenKeys.add(o.sourceKey);
+                else overriddenIds.add(o.sourceId);
+            }
+        });
+    }
+
     // 共用跨日重疊檢測邏輯
     const checkOverlap = (itemDay, sm, em) => {
         if (sm > em) { // 發生跨日
-            // 檢查第一天 (開始日)
             if (Number(itemDay) === day && sm < endMins && 1440 > startMins) return false;
-            // 檢查第二天 (結束日)
             let nextDay = Number(itemDay) === 7 ? 1 : Number(itemDay) + 1;
             if (nextDay === day && 0 < endMins && em > startMins) return false;
         } else {
-            // 一般無跨日
             if (Number(itemDay) === day && sm < endMins && em > startMins) return false;
         }
         return true;
     };
 
-    // 1. 檢查一般節次課程
+    // 1. 檢查一般節次課程 (排除被調走的課)
     for (let p of (s.periods || initialDefaultPeriods)) { 
-        const c = (s.courses || {})[`${day}_${p.id}`]; 
+        const key = `${day}_${p.id}`;
+        if (overriddenKeys.has(key)) continue; // 這節課被調走了，所以算空堂
+        
+        const c = (s.courses || {})[key]; 
         if (c && c.name && timeToMinutes(p.start) < endMins && timeToMinutes(p.end) > startMins) return false; 
     }
     
-    // 2. 檢查自訂課程、家教、工作 (套用跨日邏輯)
+    // 2. 檢查自訂課程、家教、工作 (排除被調走的項目)
     for (let c of (s.customCourses || [])) { 
+        if (overriddenKeys.has(`${c.day}_${c.id}`)) continue;
         if (!checkOverlap(c.day, timeToMinutes(c.startTime), timeToMinutes(c.endTime))) return false; 
     }
     for (let t of (s.tutorings || [])) { 
+        if (overriddenIds.has(t.id)) continue;
         if (!checkOverlap(t.day, timeToMinutes(t.startTime), timeToMinutes(t.endTime))) return false; 
     }
     for (let w of (s.works || [])) { 
+        if (overriddenIds.has(w.id)) continue;
         if (!checkOverlap(w.day, timeToMinutes(w.startTime), timeToMinutes(w.endTime))) return false; 
     }
     
@@ -6866,19 +7066,17 @@ function isMyTimeFree(day, startMins, endMins, dateStr) {
         if (!checkOverlap(t.day, timeToMinutes(st), timeToMinutes(et))) return false; 
     }
 
-    // 4. 檢查調課 (Overrides) - 需要依賴 dateStr 判斷
+    // 4. 檢查調課 (Overrides) - 判斷移入這天的事件
     if (dateStr) {
         for (let o of (s.overrides || [])) {
             let sm = timeToMinutes(o.startTime), em = timeToMinutes(o.endTime);
             if (o.targetDate === dateStr) { 
-                // 當天觸發
                 if (sm > em) {
                     if (sm < endMins && 1440 > startMins) return false;
                 } else {
                     if (sm < endMins && em > startMins) return false;
                 }
             } else if (sm > em) {
-                // 如果調課跨日，且跨到正在渲染的「這一天」
                 const prevDateObj = new Date(dateStr);
                 prevDateObj.setDate(prevDateObj.getDate() - 1);
                 if (o.targetDate === formatDate(prevDateObj) && 0 < endMins && em > startMins) return false;
@@ -8016,20 +8214,18 @@ window.openFinanceActionMenu = function(id) {
 
     let html = "";
     
-    // 依據條件產生對應按鈕
-    if ((i.type === "receivable" || i.type === "payable") && rem > 0) { 
+    // 【修復 2】嚴格禁止對連動帳務 (fin_sync_ 開頭) 進行還款操作
+    if ((i.type === "receivable" || i.type === "payable") && rem > 0 && !i.id.startsWith("fin_sync_")) { 
         html += `<button class="action-menu-btn" onclick="closeModal('finance-action-modal'); openRepayModal('${i.id}')">💸 還款</button>`;
     }
     
     html += `<button class="action-menu-btn" onclick="closeModal('finance-action-modal'); toggleRecordHidden('${i.id}')">${i.isHidden ? '👁️ 解除隱藏' : '🙈 隱藏紀錄'}</button>`;
     
-    // 判斷是否有編輯與刪除權限
     if (!isShared || isCreditor) {
         if (!i.id.startsWith("fin_sync_")) {
             html += `<button class="action-menu-btn" onclick="closeModal('finance-action-modal'); openFinanceModal('${i.id}')">✏️ 編輯</button>`;
             html += `<button class="action-menu-btn danger" onclick="closeModal('finance-action-modal'); deleteFinanceRecord('${i.id}')">🗑️ 刪除</button>`;
         } else {
-            // 如果是連動帳務，給個純提示按鈕
             html += `<div style="text-align:center; font-size:0.75rem; color:var(--text-muted); margin-top:8px;">此為連動帳務，請至打工/家教頁面編輯</div>`;
         }
     }
@@ -8037,7 +8233,6 @@ window.openFinanceActionMenu = function(id) {
     container.innerHTML = html;
     document.getElementById("finance-action-modal").classList.add("active");
 };
-
 // ========================================================
 // 自訂日曆系統 (Custom Date Picker) 核心邏輯
 // ========================================================
