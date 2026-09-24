@@ -14,17 +14,6 @@ const STATIC_ASSETS = [
   './icon.svg'
 ];
 
-// 1. 載入 OneSignal 的核心
-importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
-
-// 2. 強制新的 Service Worker 立即接管
-self.addEventListener('install', (event) => {
-    self.skipWaiting();
-});
-self.addEventListener('activate', (event) => {
-    event.waitUntil(clients.claim());
-});
-
 // 安裝 Service Worker 並快取核心資源
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -50,9 +39,10 @@ self.addEventListener('activate', (event) => {
 // 攔截請求：網路優先，失敗時退回快取 (Network-first with cache fallback)
 self.addEventListener('fetch', (event) => {
   // 排除 Supabase 等外部 API 請求
-  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
-        return; 
+  if (event.request.url.includes('supabase.co')) {
+    return;
   }
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
