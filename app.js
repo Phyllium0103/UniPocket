@@ -98,17 +98,20 @@ function triggerHaptic(duration = 20) {
 }
 
 //OneSignal
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(async function(OneSignal) {
-  await OneSignal.init({
-    appId: "edb6227b-ecdb-4a1c-b116-1b1bbd1bbf86",
-    notifyButton: {
-      enable: true,
-    },
-    // 加入這兩行，指定使用你的 sw.js
-    serviceWorkerParam: { scope: "/" },
-    serviceWorkerPath: "sw.js" 
-  });
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+          await OneSignal.init({
+            appId: "edb6227b-ecdb-4a1c-b116-1b1bbd1bbf86",
+            notifyButton: {
+              enable: true,
+            },
+            serviceWorkerParam: { scope: "/" },
+            serviceWorkerPath: "sw.js" 
+          });
+        });
+    }, 2000); // 延遲 2000 毫秒 (2秒)
 });
 
 // ========================================================
