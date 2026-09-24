@@ -14,6 +14,17 @@ const STATIC_ASSETS = [
   './icon.svg'
 ];
 
+// 1. 載入 OneSignal 的核心
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
+// 2. 強制新的 Service Worker 立即接管
+self.addEventListener('install', (event) => {
+    self.skipWaiting();
+});
+self.addEventListener('activate', (event) => {
+    event.waitUntil(clients.claim());
+});
+
 // 安裝 Service Worker 並快取核心資源
 self.addEventListener('install', (event) => {
   event.waitUntil(
