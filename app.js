@@ -105,7 +105,7 @@ window.addEventListener('load', () => {
           await OneSignal.init({
             appId: "edb6227b-ecdb-4a1c-b116-1b1bbd1bbf86",
             notifyButton: {
-              enable: false,
+              enable: enable,
             },
             serviceWorkerParam: { scope: "/" },
             serviceWorkerPath: "sw.js" 
