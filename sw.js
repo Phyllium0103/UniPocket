@@ -50,10 +50,9 @@ self.addEventListener('activate', (event) => {
 // 攔截請求：網路優先，失敗時退回快取 (Network-first with cache fallback)
 self.addEventListener('fetch', (event) => {
   // 排除 Supabase 等外部 API 請求
-  if (event.request.url.includes('supabase.co')) {
-    return;
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+        return; 
   }
-
   event.respondWith(
     fetch(event.request)
       .then((response) => {
