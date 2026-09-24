@@ -97,6 +97,18 @@ function triggerHaptic(duration = 20) {
     }
 }
 
+//OneSignal
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(async function(OneSignal) {
+  await OneSignal.init({
+    appId: "edb6227b-ecdb-4a1c-b116-1b1bbd1bbf86", // 這是你專屬的 App ID
+    safari_web_id: "", // 如果未來需要支援 Mac Safari 推播，才需要到 Apple 開發者帳號申請填入
+    notifyButton: {
+      enable: true, // 可以在網頁右下角顯示一個訂閱推播的小鈴鐺按鈕，方便測試
+    },
+  });
+});
+
 // ========================================================
 // 預設資料與主題配置
 // ========================================================
