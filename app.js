@@ -4149,11 +4149,6 @@ function openViewDetailModal(type, payload, activeTab = 'info') {
             bodyEl.innerHTML = html;
             
         } else if (type === "temp_event") {
-            if (overrideObj.memo) infoHtml += `<div class="detail-label">備註</div><div class="detail-value">${escapeHtmlWithBr(overrideObj.memo)}</div>`;
-            infoHtml += `</div>`;
-            bodyEl.innerHTML = infoHtml;
-            
-        } else if (type === "temp_event") {
             const { tmp } = payload; 
             currentViewingTempEventId = tmp.id; 
             titleEl.innerText = `事件: ${tmp.title}`; 
