@@ -674,6 +674,17 @@ async function rejectReq(cid) {
 }
 
 // 渲染好友畫面
+function getTodayPeekCount(friendId) {
+    const record = state.peekCounts?.[friendId];
+    const todayStr = formatDate(new Date());
+
+    if (!record || typeof record !== 'object' || record.date !== todayStr) {
+        return 0;
+    }
+
+    return Number(record.count) || 0;
+}
+
 function renderFriendsView() {
     const flist = document.getElementById("friends-list");
     const rlist = document.getElementById("friends-requests-list");
@@ -702,6 +713,7 @@ function renderFriendsView() {
                     <div class="friend-info">
                         <span class="friend-name">${escapeHtml(friend.nickname || friend.email)}</span>
                         <span class="friend-email">${friend.email || "無Email"}</span>
+                        <span class="friend-peek-count">今日偷窺你 ${getTodayPeekCount(friend.id)} 次</span>
                     </div>
                     <button class="btn btn-secondary" style="padding:4px 8px; font-size:0.7rem; border-radius:12px;" onclick="viewFriendSchedule('${friend.id}', '${escapeJS(friend.nickname || friend.email)}')">查看課表</button>
                 </div>`;
@@ -877,6 +889,8 @@ async function fetchMessages() {
                 saveToStorage();
                 if (typeof renderFinances === 'function') renderFinances();
             }
+
+            renderFriendsView();
             
             renderNotifications();
         }
@@ -6942,26 +6956,8 @@ async function viewFriendSchedule(fId, fName) {
                 supabaseClient.from('user_messages').insert({ sender_id: currentUser.id, receiver_id: fId, type: 'peek', payload: {} }).then(() => {}).catch((e)=>{ console.error("Peek event error", e); });
             }
 
-            // 取得對方偷窺我的次數
-            if (!state.peekCounts) state.peekCounts = {};
-            const todayStr = formatDate(new Date());
-            let peekRecord = state.peekCounts[fId];
-            let peekCount = 0;
-            
-            if (peekRecord) {
-                // 如果是舊版(純數字)資料，或是日期不是今天，就立刻歸零並存檔
-                if (typeof peekRecord !== 'object' || peekRecord.date !== todayStr) {
-                    state.peekCounts[fId] = { count: 0, date: todayStr };
-                    saveToStorage(); // 發現不是今天就存檔覆寫
-                    peekCount = 0;
-                } else {
-                    peekCount = peekRecord.count;
-                }
-            }
-
-            // 加入元素存在檢查，並在文案加上「今日」
             const titleEl = document.getElementById("friend-view-title");
-            if (titleEl) titleEl.innerText = `今日 ${fName} 偷窺了你 ${peekCount} 次`;
+            if (titleEl) titleEl.innerText = `正在查看 ${fName} 的課表`;
             
             const bannerEl = document.getElementById("friend-view-banner");
             if (bannerEl) bannerEl.style.display = "flex";
